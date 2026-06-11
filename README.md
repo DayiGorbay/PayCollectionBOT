@@ -1,64 +1,37 @@
 # PayCollectionBOT
 
-یک ربات تلگرام حرفه‌ای با Python، `aiogram 3`، `SQLAlchemy` و `SQLite/PostgreSQL`.
+ربات تلگرام + پنل ادمین React + API FastAPI — استقرار Production با Docker.
 
-## ویژگی‌ها
-
-- ساختار ماژولار و production-ready
-- سیستم رفرال با لینک اختصاصی
-- احراز هویت شماره ایران
-- کپچا با FSM
-- عضویت اجباری در کانال
-- پنل کاربری با اطلاعات داینامیک
-- لاگ‌گیری استاندارد و error handling
-- سیستم ضدتقلب و نرخ‌گیری
-
-## نصب
-
-1. کپی فایل `.env.example` به `.env`
-2. مقدار `BOT_TOKEN` و `CHANNEL_USERNAME` را تنظیم کنید
-3. محیط مجازی بسازید:
+## استقرار سریع (Production)
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
+sudo bash install.sh
 ```
 
-4. پکیج‌ها را نصب کنید:
+پس از نصب:
 
 ```bash
-pip install -r requirements.txt
+paycollection update    # بروزرسانی
+paycollection backup    # پشتیبان‌گیری
 ```
 
-## اجرای ربات
+مستندات کامل: **[DEPLOYMENT.md](DEPLOYMENT.md)**
+
+## توسعه محلی
 
 ```bash
+docker compose up -d          # PostgreSQL
+cd backend && alembic upgrade head && uvicorn app.main:app --reload --port 8000
+cd frontend && npm install && npm run dev
 python bot.py
 ```
 
-## پایگاه داده
+## ساختار
 
-به صورت پیش‌فرض از SQLite استفاده می‌شود. اگر بخواهید PostgreSQL استفاده کنید، مقدار `DATABASE_URL` را به شکل زیر تغییر دهید:
-
-```bash
-DATABASE_URL=postgresql+asyncpg://user:password@localhost/paycollectionbot
-```
-
-## ساختار پروژه
-
-- `bot.py` - نقطه ورود اصلی
-- `config.py` - تنظیمات محیطی
-- `app/handlers/` - مدیریت پیام‌ها و callback ها
-- `app/keyboards/` - ساخت کیبوردها
-- `app/middlewares/` - middleware های rate limit و امنیت
-- `app/services/` - منطق کسب‌وکار و دسترسی به دیتابیس
-- `app/database/` - اتصال و Session
-- `app/models/` - مدل SQLAlchemy
-- `app/states/` - وضعیت‌های FSM
-- `app/utils/` - ابزارهای کمکی
-
-## توجه
-
-- `CHANNEL_ID` باید آیدی کانال شما باشد (مثلا `-1001234567890`).
-- `CHANNEL_LINK` باید نام کاربری یا آدرس کانال شما باشد (مثلا `@YourChannelUsername`).
-- برای تست ربات داخل کانال، ربات باید ادمین کانال باشد تا بتواند وضعیت عضویت کاربران را بررسی کند.
+| پوشه | توضیح |
+|------|--------|
+| `app/` | ربات تلگرام (aiogram) |
+| `backend/` | REST API (FastAPI + Alembic) |
+| `frontend/` | پنل ادمین (React + Vite) |
+| `deploy/` | Nginx, backup, update scripts |
+| `install.sh` | نصب خودکار Production |

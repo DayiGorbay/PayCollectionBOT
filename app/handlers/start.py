@@ -3,15 +3,13 @@ from __future__ import annotations
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
-from aiogram.dispatcher.depends import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database.session import get_session
 from app.keyboards.main import captcha_keyboard, force_join_keyboard, main_menu_keyboard
 from app.services.user_service import get_or_create_user, mark_channel_joined, register_referral
 from app.utils.security import main_cb
-from app.utils.telegram import get_channel_chat_id, is_channel_member
+from app.utils.telegram import get_channel_chat_id, is_channel_configured, is_channel_member
 
 router = Router()
 
@@ -34,10 +32,7 @@ HELP_TEXT = (
 
 
 @router.message(CommandStart())
-async def on_start(
-    message: Message,
-    session: AsyncSession = Depends(get_session),
-) -> None:
+async def on_start(message: Message, session: AsyncSession) -> None:
     payload = ""
     if message.text:
         parts = message.text.split(maxsplit=1)
@@ -47,6 +42,15 @@ async def on_start(
     user = await get_or_create_user(session, message.from_user)
     if payload:
         await register_referral(session, user, payload)
+        await session.refresh(user)
+
+    if settings.REQUIRE_CHANNEL_JOIN and not is_channel_configured(
+        settings.CHANNEL_ID,
+        settings.CHANNEL_LINK,
+        settings.CHANNEL_USERNAME,
+    ):
+        await message.answer("ربات در حال پیکربندی است. لطفاً بعداً دوباره تلاش کنید.")
+        return
 
     channel_chat_id = get_channel_chat_id(
         settings.CHANNEL_ID,
@@ -79,18 +83,14 @@ async def on_help(message: Message) -> None:
     await message.answer(HELP_TEXT)
 
 
-@router.callback_query(main_cb.filter(action="help"))
+@router.callback_query(main_cb.filter(F.action == "help"))
 async def on_help_callback(callback: CallbackQuery) -> None:
     await callback.message.answer(HELP_TEXT)
     await callback.answer()
 
 
-@router.callback_query(main_cb.filter(action="free_connect"))
+@router.callback_query(main_cb.filter(F.action == "free_connect"))
 async def on_free_connect(callback: CallbackQuery) -> None:
     await callback.answer("این بخش فعلاً در حال آماده‌سازی است.", show_alert=True)
 
 
-@router.callback_query(main_cb.filter(action="my_services"))
-async def on_my_services(callback: CallbackQuery) -> None:
-    await callback.message.answer("سرویس های شما در آینده فعال خواهد شد.")
-    await callback.answer()

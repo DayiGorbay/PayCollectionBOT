@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+backend/.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Environment & secrets
+.env
+.env.local
+backend/.env
+*.log
+
+# Data
+data/uploads/
+*.db
+data.db
+
+# Git & IDE
+.git/
+.gitignore
+.cursor/
+*.md
+!DEPLOYMENT.md
+
+# Build artifacts
+.tmp_*
+backend/openapi/
+
+# OS
+.DS_Store
+Thumbs.db

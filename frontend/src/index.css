@@ -1,0 +1,249 @@
+@import './styles/vazirmatn.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: Vazirmatn, Tahoma, 'Segoe UI', system-ui, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body,
+  #root,
+  button,
+  input,
+  textarea,
+  select,
+  optgroup,
+  option {
+    font-family: inherit;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  th,
+  td,
+  label,
+  a,
+  p,
+  span,
+  li {
+    font-family: inherit;
+  }
+
+  strong,
+  b {
+    font-weight: 700;
+  }
+
+  /* Tailwind font-* → وزن‌های واقعی Vazirmatn */
+  .font-thin {
+    font-weight: 100;
+  }
+  .font-extralight {
+    font-weight: 200;
+  }
+  .font-light {
+    font-weight: 300;
+  }
+  .font-normal {
+    font-weight: 400;
+  }
+  .font-medium {
+    font-weight: 500;
+  }
+  .font-semibold {
+    font-weight: 600;
+  }
+  .font-bold {
+    font-weight: 700;
+  }
+  .font-extrabold {
+    font-weight: 800;
+  }
+  .font-black {
+    font-weight: 900;
+  }
+}
+
+/* مقادیر پیش‌فرض — با انتخاب تم در تنظیمات بازنویسی می‌شوند */
+:root {
+  color-scheme: dark;
+  --bg-base: #0a0a0a;
+  --bg-sidebar: #0d0d0d;
+  --bg-card: #141414;
+  --bg-muted: #1a1a1a;
+  --bg-input: #111111;
+  --text-primary: #f5f5f5;
+  --text-muted: #9ca3af;
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #3ecf8e;
+  --accent-soft: #3ecf8e28;
+  --header-bg: rgba(10, 10, 10, 0.95);
+  --logo-bg: linear-gradient(135deg, #1a1f2e 0%, #3ecf8e 100%);
+  --logo-border: #3ecf8e55;
+  --logo-glow: 0 0 24px #3ecf8e40;
+  --nav-active-bg: color-mix(in srgb, #3ecf8e 22%, #1a1f2e);
+  --nav-hover-bg: color-mix(in srgb, #3ecf8e 10%, #0d0f14);
+}
+
+[data-color-mode='light'] {
+  color-scheme: light;
+}
+
+[data-color-mode='dark'] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text-primary);
+}
+
+.card-border {
+  border: 1px solid var(--border);
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border shadow-sm sm:rounded-3xl;
+    background: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .table-shell {
+    @apply overflow-hidden rounded-2xl border sm:rounded-3xl;
+    background: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .nav-link-active {
+    background: var(--nav-active-bg);
+    color: var(--text-primary);
+  }
+
+  .data-table {
+    @apply text-sm;
+    color: var(--text-muted);
+  }
+
+  .data-table thead {
+    background: var(--bg-muted);
+    color: var(--text-muted);
+  }
+
+  .data-table th,
+  .data-table td {
+    @apply px-4 py-3 text-right sm:px-5 sm:py-4;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table tbody tr {
+    @apply transition-colors;
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--bg-muted);
+  }
+
+  .data-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border px-4 py-3 outline-none transition;
+    background: var(--bg-input);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  .btn-primary {
+    @apply rounded-xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+    background: var(--accent);
+    color: #fff;
+  }
+
+  [data-color-mode='light'] .btn-primary {
+    color: #fff;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-xl border px-3 py-2 text-sm transition;
+    border-color: var(--border);
+    color: var(--text-muted);
+    background: transparent;
+  }
+
+  .btn-ghost:hover {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+  }
+
+  .icon-btn {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-xl border transition;
+    border-color: var(--border);
+    color: var(--text-muted);
+    background: var(--bg-card);
+  }
+
+  .icon-btn:hover {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.brand-logo-gradient {
+  display: block;
+}

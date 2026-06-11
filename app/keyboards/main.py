@@ -3,6 +3,10 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardBu
 from app.utils.security import main_cb
 
 
+def _cb(action: str, item_id: str = "0") -> str:
+    return main_cb.new(action=action, item_id=item_id)
+
+
 def _build_channel_url(channel_link: str) -> str:
     cleaned = channel_link.strip()
     if cleaned.startswith("https://") or cleaned.startswith("http://"):
@@ -13,47 +17,82 @@ def _build_channel_url(channel_link: str) -> str:
 
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    keyboard.add(InlineKeyboardButton(text="اتصال رایگان", callback_data=main_cb.new(action="free_connect")))
-    keyboard.add(
-        InlineKeyboardButton(text="حساب کاربری", callback_data=main_cb.new(action="profile")),
-        InlineKeyboardButton(text="سرویس های من", callback_data=main_cb.new(action="my_services")),
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="اتصال رایگان", callback_data=_cb("free_connect"))],
+            [
+                InlineKeyboardButton(text="خرید سرویس", callback_data=_cb("buy_service")),
+                InlineKeyboardButton(text="افزایش موجودی", callback_data=_cb("topup_balance")),
+            ],
+            [
+                InlineKeyboardButton(text="حساب کاربری", callback_data=_cb("profile")),
+                InlineKeyboardButton(text="سرویس های من", callback_data=_cb("my_services")),
+            ],
+            [
+                InlineKeyboardButton(text="راهنما", callback_data=_cb("help")),
+                InlineKeyboardButton(text="زیر مجموعه گیری", callback_data=_cb("referral")),
+            ],
+        ]
     )
-    keyboard.add(
-        InlineKeyboardButton(text="راهنما", callback_data=main_cb.new(action="help")),
-        InlineKeyboardButton(text="زیر مجموعه گیری", callback_data=main_cb.new(action="referral")),
+
+
+def products_keyboard(products) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for product in products:
+        duration = getattr(product, "duration", None) or (
+            f"{product.duration_days} روز" if getattr(product, "duration_days", None) else ""
+        )
+        label = f"{product.name} — {product.price_label}"
+        if duration:
+            label += f" / {duration}"
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=label,
+                    callback_data=_cb("select_product", str(product.id)),
+                )
+            ]
+        )
+    rows.append([InlineKeyboardButton(text="« بازگشت", callback_data=_cb("back_menu"))])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def cancel_payment_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="❌ انصراف", callback_data=_cb("cancel_payment"))]]
     )
-    return keyboard
 
 
 def captcha_keyboard() -> InlineKeyboardMarkup:
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton(text="حل کپچا", callback_data=main_cb.new(action="solve_captcha")))
-    return keyboard
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="حل کپچا", callback_data=_cb("solve_captcha"))]]
+    )
 
 
 def join_channel_keyboard(channel_link: str) -> InlineKeyboardMarkup:
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton(text="عضویت در کانال", url=_build_channel_url(channel_link))
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="عضویت در کانال", url=_build_channel_url(channel_link))],
+            [InlineKeyboardButton(text="بررسی مجدد عضویت", callback_data=_cb("check_join"))],
+        ]
     )
-    keyboard.add(InlineKeyboardButton(text="بررسی مجدد عضویت", callback_data=main_cb.new(action="check_join")))
-    return keyboard
 
 
 def force_join_keyboard(channel_link: str) -> InlineKeyboardMarkup:
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton(text="عضویت در کانال", url=_build_channel_url(channel_link))
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="عضویت در کانال", url=_build_channel_url(channel_link))],
+            [InlineKeyboardButton(text="بررسی عضویت ✅", callback_data=_cb("check_join"))],
+        ]
     )
-    keyboard.add(InlineKeyboardButton(text="بررسی عضویت ✅", callback_data=main_cb.new(action="check_join")))
-    return keyboard
 
 
 def contact_keyboard() -> ReplyKeyboardMarkup:
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    keyboard.add(KeyboardButton(text="ارسال شماره", request_contact=True))
-    return keyboard
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="ارسال شماره", request_contact=True)]],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
 
 
 def remove_keyboard() -> ReplyKeyboardRemove:

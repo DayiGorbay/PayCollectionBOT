@@ -26,6 +26,7 @@ class User(Base):
     coins = Column(Integer, default=0)
     balance = Column(Integer, default=0)
     referral_finalized = Column(Boolean, default=False)
+    referral_finalized_at = Column(DateTime(timezone=True), nullable=True)
     is_suspicious = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

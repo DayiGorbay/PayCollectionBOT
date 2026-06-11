@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INSTALL_DIR="${PAYCOLLECTION_HOME:-/opt/paycollection}"
+
+usage() {
+  cat <<EOF
+PayCollectionBOT deployment CLI
+
+Usage:
+  paycollection update          Pull latest code, backup, rebuild, migrate, health-check
+  paycollection backup          Backup database and uploads
+  paycollection restore <file>  Restore from backup archive
+  paycollection status          Show container status
+  paycollection logs [service]  Tail service logs
+  paycollection health          Run health check
+
+Environment:
+  PAYCOLLECTION_HOME  Installation directory (default: /opt/paycollection)
+EOF
+}
+
+cmd="${1:-}"
+shift || true
+
+case "${cmd}" in
+  update)
+    exec bash "${INSTALL_DIR}/deploy/scripts/update.sh" "$@"
+    ;;
+  backup)
+    exec bash "${INSTALL_DIR}/deploy/scripts/backup.sh" "$@"
+    ;;
+  restore)
+    exec bash "${INSTALL_DIR}/deploy/scripts/restore.sh" "$@"
+    ;;
+  status)
+    docker compose -f "${INSTALL_DIR}/docker-compose.production.yml" ps
+    ;;
+  logs)
+    docker compose -f "${INSTALL_DIR}/docker-compose.production.yml" logs -f --tail=200 "${1:-}"
+    ;;
+  health)
+    DOMAIN="$(grep -E '^DOMAIN=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2- || true)"
+    if [[ -n "${DOMAIN}" ]]; then
+      curl -fsS "https://${DOMAIN}/health" && echo
+    else
+      docker compose -f "${INSTALL_DIR}/docker-compose.production.yml" exec -T backend curl -fsS http://127.0.0.1:8000/health && echo
+    fi
+    ;;
+  ""|-h|--help|help)
+    usage
+    ;;
+  *)
+    echo "Unknown command: ${cmd}" >&2
+    usage
+    exit 1
+    ;;
+esac

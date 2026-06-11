@@ -1,3 +1,3 @@
-from .handlers import register_routers
+"""بسته ربات تلگرام."""
 
-__all__ = ["register_routers"]
+__all__: list[str] = []
