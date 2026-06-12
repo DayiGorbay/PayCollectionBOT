@@ -10,6 +10,7 @@ from app.database.session import AsyncSessionLocal
 from app.services.user_service import can_earn_referral_rewards, get_user_by_telegram_id
 from app.utils.security import main_cb, service_cb
 
+
 PROTECTED_ACTIONS = frozenset({
     "profile",
     "referral",
@@ -24,24 +25,24 @@ SERVICE_PROTECTED = frozenset({"view", "sub_link", "config_link", "delete", "ren
 
 
 class VerificationMiddleware(BaseMiddleware):
-    async def __call__(
-        self,
-        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
-        data: dict[str, Any],
-    ) -> Any:
+    async def __call__(self, handler, event: TelegramObject, data: dict[str, Any]):
         if not isinstance(event, CallbackQuery) or not event.data:
             return await handler(event, data)
 
-        action: str | None = None
+        action = None
         protected = False
+
         try:
             if event.data.startswith("pc:"):
-                action = main_cb.parse(event.data).get("action")
+                payload = main_cb.unpack(event.data)
+                action = payload.action
                 protected = action in PROTECTED_ACTIONS
+
             elif event.data.startswith("svc:"):
-                action = service_cb.parse(event.data).get("action")
+                payload = service_cb.unpack(event.data)
+                action = payload.action
                 protected = action in SERVICE_PROTECTED
+
         except Exception:
             return await handler(event, data)
 
