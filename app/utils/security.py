@@ -8,7 +8,7 @@ from aiogram.filters.callback_data import CallbackData
 
 class MainCallback(CallbackData, prefix="pc"):
     action: str
-    item_id: Optional[str] = None
+    item_id: Optional[str] = "0"
 
 
 class ServiceCallback(CallbackData, prefix="svc"):
