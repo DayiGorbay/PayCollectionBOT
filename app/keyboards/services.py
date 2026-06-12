@@ -12,11 +12,20 @@ def services_list_keyboard(services: list[UserService]) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=label,
-                    callback_data=service_cb.new(action="view", service_id=str(svc.id)),
+                    callback_data=service_cb(action="view", service_id=str(svc.id)).pack(),
                 )
             ]
         )
-    rows.append([InlineKeyboardButton(text="« بازگشت", callback_data=main_cb.new(action="back_menu"))])
+
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text="« بازگشت",
+                callback_data=main_cb(action="back_menu").pack(),
+            )
+        ]
+    )
+
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -27,27 +36,27 @@ def service_detail_keyboard(service_id: int) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="🔗 لینک سابسکریپشن",
-                    callback_data=service_cb.new(action="sub_link", service_id=sid),
+                    callback_data=service_cb(action="sub_link", service_id=sid).pack(),
                 ),
                 InlineKeyboardButton(
                     text="⚙️ کانفیگ",
-                    callback_data=service_cb.new(action="config_link", service_id=sid),
+                    callback_data=service_cb(action="config_link", service_id=sid).pack(),
                 ),
             ],
             [
                 InlineKeyboardButton(
                     text="🔄 تمدید",
-                    callback_data=service_cb.new(action="renew", service_id=sid),
+                    callback_data=service_cb(action="renew", service_id=sid).pack(),
                 ),
                 InlineKeyboardButton(
                     text="🗑 حذف",
-                    callback_data=service_cb.new(action="delete", service_id=sid),
+                    callback_data=service_cb(action="delete", service_id=sid).pack(),
                 ),
             ],
             [
                 InlineKeyboardButton(
                     text="« لیست سرویس‌ها",
-                    callback_data=service_cb.new(action="back_list", service_id="0"),
+                    callback_data=service_cb(action="back_list", service_id="0").pack(),
                 )
             ],
         ]
