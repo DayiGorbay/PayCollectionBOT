@@ -13,17 +13,13 @@ from app.services.user_service import get_or_create_user, mark_channel_joined
 from app.utils.security import main_cb
 from app.utils.telegram import get_channel_chat_id, is_channel_configured, is_channel_member
 
+
 ALLOWED_ACTIONS = frozenset({"check_join", "solve_captcha", "help"})
 ALLOWED_COMMANDS = frozenset({"/start", "/help"})
 
 
 class ForceJoinMiddleware(BaseMiddleware):
-    async def __call__(
-        self,
-        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
-        event: TelegramObject,
-        data: dict[str, Any],
-    ) -> Any:
+    async def __call__(self, handler, event: TelegramObject, data: dict[str, Any]):
         if isinstance(event, Message) and event.text:
             command = event.text.strip().split()[0]
             if command in ALLOWED_COMMANDS:
@@ -31,10 +27,11 @@ class ForceJoinMiddleware(BaseMiddleware):
 
         if isinstance(event, CallbackQuery):
             try:
-                payload = main_cb.parse(event.data or "")
-                action = payload.get("action")
+                payload = main_cb.unpack(event.data or "")
+                action = payload.action
             except Exception:
                 action = None
+
             if action in ALLOWED_ACTIONS:
                 return await handler(event, data)
 
@@ -43,29 +40,22 @@ class ForceJoinMiddleware(BaseMiddleware):
             settings.CHANNEL_LINK,
             settings.CHANNEL_USERNAME,
         )
+
         if not is_channel_configured(settings.CHANNEL_ID, settings.CHANNEL_LINK, settings.CHANNEL_USERNAME):
             if settings.REQUIRE_CHANNEL_JOIN:
-                prompt = "⚠️ ربات هنوز کانال اجباری را پیکربندی نکرده است. لطفاً بعداً تلاش کنید."
+                msg = "⚠️ ربات هنوز کانال اجباری را پیکربندی نکرده است. لطفاً بعداً تلاش کنید."
                 if isinstance(event, Message):
-                    await event.answer(prompt)
+                    await event.answer(msg)
                 elif isinstance(event, CallbackQuery):
-                    await event.answer(prompt, show_alert=True)
+                    await event.answer(msg, show_alert=True)
                 return
             return await handler(event, data)
 
-        user_id = None
-        tg_user = None
-        bot = None
-        if isinstance(event, Message):
-            user_id = event.from_user.id
-            tg_user = event.from_user
-            bot = event.bot
-        elif isinstance(event, CallbackQuery):
-            user_id = event.from_user.id
-            tg_user = event.from_user
-            bot = event.bot
+        user_id = event.from_user.id if event.from_user else None
+        tg_user = event.from_user
+        bot = event.bot
 
-        if user_id is None or tg_user is None or bot is None:
+        if not user_id or not tg_user or not bot:
             return await handler(event, data)
 
         async with AsyncSessionLocal() as session:
@@ -77,16 +67,12 @@ class ForceJoinMiddleware(BaseMiddleware):
                     await mark_channel_joined(session, user)
                 return await handler(event, data)
 
-        prompt = (
-            "🚫 برای استفاده از ربات ابتدا باید عضو کانال ما شوید.\n\n"
-            "برای ادامه ابتدا روی دکمه عضویت در کانال کلیک کنید و سپس بررسی عضویت را بزنید."
-        )
+                prompt = (
+            		"🚫 برای استفاده از ربات ابتدا باید عضو کانال ما شوید.\n\n"
+            		"برای ادامه ابتدا روی دکمه عضویت در کانال کلیک کنید و سپس بررسی عضویت را بزنید."
+       	 )
         if isinstance(event, Message):
             await event.answer(prompt, reply_markup=force_join_keyboard(settings.CHANNEL_LINK))
         elif isinstance(event, CallbackQuery) and event.message:
-            await event.message.answer(
-                prompt,
-                reply_markup=force_join_keyboard(settings.CHANNEL_LINK),
-            )
+            await event.message.answer(prompt, reply_markup=force_join_keyboard(settings.CHANNEL_LINK))
             await event.answer()
-        return
