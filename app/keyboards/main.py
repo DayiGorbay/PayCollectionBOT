@@ -4,7 +4,7 @@ from app.utils.security import main_cb
 
 
 def _cb(action: str, item_id: str = "0") -> str:
-    return main_cb.new(action=action, item_id=item_id)
+    return main_cb(action=action, item_id=item_id).pack()
 
 
 def _build_channel_url(channel_link: str) -> str:
@@ -53,6 +53,7 @@ def products_keyboard(products) -> InlineKeyboardMarkup:
                 )
             ]
         )
+
     rows.append([InlineKeyboardButton(text="« بازگشت", callback_data=_cb("back_menu"))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
