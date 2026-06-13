@@ -28,4 +28,8 @@ class TelegramUser(Base):
     is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    inviter: Mapped["TelegramUser" | None] = relationship("TelegramUser", remote_side=[id], foreign_keys=[invited_by])
+    inviter: Mapped[TelegramUser | None] = relationship(
+        "TelegramUser",
+        remote_side=[id],
+        foreign_keys=[invited_by],
+    )
