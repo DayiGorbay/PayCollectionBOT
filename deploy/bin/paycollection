@@ -43,8 +43,9 @@ case "${cmd}" in
     DOMAIN="$(grep -E '^DOMAIN=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2- || true)"
     if [[ -n "${DOMAIN}" ]]; then
       curl -fsS "https://${DOMAIN}/health" && echo
+      curl -fsS "https://${DOMAIN}/health/live" && echo
     else
-      docker compose -f "${INSTALL_DIR}/docker-compose.production.yml" exec -T backend curl -fsS http://127.0.0.1:8000/health && echo
+      docker compose -f "${INSTALL_DIR}/docker-compose.production.yml" exec -T backend curl -fsS http://127.0.0.1:8000/health/live && echo
     fi
     ;;
   ""|-h|--help|help)

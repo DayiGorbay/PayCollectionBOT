@@ -16,8 +16,7 @@ def ensure_uploads_dir() -> Path:
 async def download_receipt_photo(bot: Bot, file_id: str, order_id: int) -> str:
     uploads = ensure_uploads_dir()
     destination = uploads / f"order_{order_id}.jpg"
-    file = await bot.get_file(file_id)
-    await bot.download_file(file.file_path, destination=destination)
+    await bot.download(file_id, destination=destination)
     return str(destination.resolve())
 
 

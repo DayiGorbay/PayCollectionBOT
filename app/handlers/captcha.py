@@ -6,7 +6,15 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.keyboards.main import contact_keyboard, join_channel_keyboard, remove_keyboard
+from app.handlers.start import START_TEXT, VERIFICATION_TEXT
+from app.keyboards.main import (
+    back_menu_keyboard,
+    captcha_keyboard,
+    contact_keyboard,
+    join_channel_keyboard,
+    main_menu_keyboard,
+    remove_keyboard,
+)
 from app.services.user_service import (
     PhoneVerificationResult,
     get_user_by_telegram_id,
@@ -14,6 +22,7 @@ from app.services.user_service import (
     try_complete_referral,
 )
 from app.states.registration import RegistrationState
+from app.utils.callback_ui import edit_callback_message
 from app.utils.security import main_cb
 from app.utils.telegram import get_channel_chat_id, is_channel_member
 
@@ -28,7 +37,7 @@ async def on_solve_captcha(
 ) -> None:
     user = await get_user_by_telegram_id(session, callback.from_user.id)
     if user is None:
-        await callback.message.answer("ابتدا با /start وارد شوید.")
+        await edit_callback_message(callback, "ابتدا با /start وارد شوید.")
         await callback.answer()
         return
 
@@ -36,8 +45,13 @@ async def on_solve_captcha(
         await callback.answer("حساب شما قبلاً تأیید شده است.", show_alert=True)
         return
 
+    await edit_callback_message(
+        callback,
+        "برای تایید حساب، روی دکمه «ارسال شماره» در پایین صفحه کلیک کنید 👇",
+        reply_markup=None,
+    )
     await callback.message.answer(
-        "برای تایید حساب خود روی دکمه زیر کلیک کنید 👇",
+        "👇",
         reply_markup=contact_keyboard(),
     )
     await state.set_state(RegistrationState.waiting_contact)
@@ -86,7 +100,11 @@ async def on_contact_received(
         return
 
     if user.invited_by is None:
-        await message.answer("حساب کاربری شما با موفقیت تایید شد ✅", reply_markup=remove_keyboard())
+        await message.answer(
+            "حساب کاربری شما با موفقیت تایید شد ✅",
+            reply_markup=remove_keyboard(),
+        )
+        await message.answer(START_TEXT, reply_markup=main_menu_keyboard())
         await state.clear()
         return
 
@@ -111,6 +129,7 @@ async def on_contact_received(
         )
     else:
         await message.answer("حساب کاربری شما با موفقیت تایید شد ✅", reply_markup=remove_keyboard())
+    await message.answer(START_TEXT, reply_markup=main_menu_keyboard())
     await state.clear()
 
 
@@ -126,8 +145,43 @@ async def on_check_join(
     state: FSMContext,
 ) -> None:
     user = await get_user_by_telegram_id(session, callback.from_user.id)
-    if user is None or not user.verified:
-        await callback.message.answer("ابتدا باید حساب خود را با حل کپچا و ارسال شماره احراز کنید.")
+    channel_chat_id = get_channel_chat_id(
+        settings.CHANNEL_ID,
+        settings.CHANNEL_LINK,
+        settings.CHANNEL_USERNAME,
+    )
+    channel_member = await is_channel_member(callback.bot, channel_chat_id, callback.from_user.id)
+
+    if user is None:
+        if channel_member:
+            await edit_callback_message(
+                callback,
+                VERIFICATION_TEXT,
+                reply_markup=captcha_keyboard(),
+            )
+        else:
+            await edit_callback_message(
+                callback,
+                "🚫 برای استفاده از ربات ابتدا باید عضو کانال ما شوید.\n\n"
+                "برای ادامه ابتدا روی دکمه عضویت در کانال کلیک کنید و سپس بررسی عضویت را بزنید.",
+                reply_markup=join_channel_keyboard(settings.CHANNEL_LINK),
+            )
+        await callback.answer()
+        return
+
+    if not user.verified:
+        if channel_member:
+            await edit_callback_message(
+                callback,
+                VERIFICATION_TEXT,
+                reply_markup=captcha_keyboard(),
+            )
+        else:
+            await edit_callback_message(
+                callback,
+                "شما هنوز عضو کانال نیستید. لطفاً ابتدا عضو شوید و سپس دوباره بررسی کنید.",
+                reply_markup=join_channel_keyboard(settings.CHANNEL_LINK),
+            )
         await callback.answer()
         return
 
@@ -135,14 +189,9 @@ async def on_check_join(
         await callback.answer("حساب شما در حال بررسی است و امکان ثبت رفرال وجود ندارد.", show_alert=True)
         return
 
-    channel_chat_id = get_channel_chat_id(
-        settings.CHANNEL_ID,
-        settings.CHANNEL_LINK,
-        settings.CHANNEL_USERNAME,
-    )
-    channel_member = await is_channel_member(callback.bot, channel_chat_id, user.telegram_id)
     if not channel_member:
-        await callback.message.answer(
+        await edit_callback_message(
+            callback,
             "شما هنوز عضو کانال نیستید. لطفاً ابتدا عضو شوید و سپس دوباره بررسی کنید.",
             reply_markup=join_channel_keyboard(settings.CHANNEL_LINK),
         )
@@ -150,16 +199,22 @@ async def on_check_join(
         return
 
     if user.referral_finalized or not user.invited_by:
-        await callback.message.answer("عضویت شما در کانال تأیید شد. ✅")
+        await edit_callback_message(callback, "عضویت شما در کانال تأیید شد. ✅", reply_markup=main_menu_keyboard())
         await state.clear()
         await callback.answer()
         return
 
     if await try_complete_referral(session, user, channel_member=True):
-        await callback.message.answer("عضویت شما در کانال تایید شد و رفرال نهایی شد. ✅")
+        await edit_callback_message(
+            callback,
+            "عضویت شما در کانال تایید شد و رفرال نهایی شد. ✅",
+            reply_markup=main_menu_keyboard(),
+        )
     else:
-        await callback.message.answer(
+        await edit_callback_message(
+            callback,
             "عضویت شما تأیید شد. رفرال قابل ثبت نبود (شرایط احراز یا سقف روزانه).",
+            reply_markup=main_menu_keyboard(),
         )
     await state.clear()
     await callback.answer()

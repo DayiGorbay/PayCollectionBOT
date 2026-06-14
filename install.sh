@@ -37,6 +37,36 @@ prompt_required() {
   printf -v "${var_name}" '%s' "${value}"
 }
 
+prompt_optional() {
+  local var_name="$1"
+  local prompt="$2"
+  local default="${3:-}"
+  local value=""
+  if [[ -n "${default}" ]]; then
+    read -r -p "${prompt} [${default}]: " value
+    value="${value:-$default}"
+  else
+    read -r -p "${prompt} (optional, Enter to skip): " value
+  fi
+  printf -v "${var_name}" '%s' "${value}"
+}
+
+prompt_yes_no() {
+  local var_name="$1"
+  local prompt="$2"
+  local default="${3:-y}"
+  local answer=""
+  local hint="y/n"
+  if [[ "${default}" == "y" ]]; then hint="Y/n"; elif [[ "${default}" == "n" ]]; then hint="y/N"; fi
+  read -r -p "${prompt} (${hint}): " answer
+  answer="${answer:-$default}"
+  if [[ "${answer}" =~ ^[Yy]$ ]]; then
+    printf -v "${var_name}" '%s' "true"
+  else
+    printf -v "${var_name}" '%s' "false"
+  fi
+}
+
 prompt_telegram_proxy() {
   local answer=""
   read -r -p "Do you want to use Telegram Proxy? (y/n): " answer
@@ -49,6 +79,20 @@ prompt_telegram_proxy() {
   fi
 }
 
+prompt_bot_settings() {
+  echo
+  log "Telegram bot settings (optional — press Enter to skip any field):"
+  prompt_optional PAYMENT_CARD_NUMBER "Payment card number shown to users in bot"
+  prompt_optional CHANNEL_ID "Force-join channel ID (e.g. -1001234567890)"
+  prompt_optional CHANNEL_LINK "Force-join channel link (e.g. https://t.me/yourchannel)"
+  prompt_optional CHANNEL_USERNAME "Force-join channel username (e.g. @yourchannel)"
+  prompt_optional ADMIN_TELEGRAM_ID "Admin Telegram user ID for order notifications"
+  prompt_yes_no REQUIRE_CHANNEL_JOIN "Require channel join for bot users?" "y"
+  prompt_optional MIN_TOPUP_RIAL "Minimum top-up amount (Toman)" "10000"
+  prompt_optional REFERRAL_DAILY_CAP "Daily referral cap per user" "50"
+  prompt_optional LOG_LEVEL "Log level (DEBUG/INFO/WARNING/ERROR)" "INFO"
+}
+
 install_packages() {
   log "Updating system packages..."
   export DEBIAN_FRONTEND=noninteractive
@@ -57,7 +101,7 @@ install_packages() {
 
   log "Installing Docker, Nginx, Certbot, and utilities..."
   apt-get install -y \
-    ca-certificates curl gnupg lsb-release git ufw openssl wget \
+    ca-certificates curl gnupg lsb-release git ufw openssl wget dnsutils \
     nginx certbot
 
   if ! command -v docker >/dev/null 2>&1; then
@@ -119,13 +163,16 @@ BOT_PROXY_URL=${BOT_PROXY_URL}
 
 BACKEND_API_URL=http://backend:8000/api/v1
 UPLOADS_DIR=/app/data/uploads/receipts
-PAYMENT_CARD_NUMBER=
-CHANNEL_ID=
-CHANNEL_LINK=
-ADMIN_TELEGRAM_ID=
-REQUIRE_CHANNEL_JOIN=true
-LOG_LEVEL=INFO
-REFERRAL_DAILY_CAP=50
+
+PAYMENT_CARD_NUMBER=${PAYMENT_CARD_NUMBER}
+CHANNEL_ID=${CHANNEL_ID}
+CHANNEL_LINK=${CHANNEL_LINK}
+CHANNEL_USERNAME=${CHANNEL_USERNAME}
+ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}
+REQUIRE_CHANNEL_JOIN=${REQUIRE_CHANNEL_JOIN}
+MIN_TOPUP_RIAL=${MIN_TOPUP_RIAL}
+LOG_LEVEL=${LOG_LEVEL}
+REFERRAL_DAILY_CAP=${REFERRAL_DAILY_CAP}
 EOF
   chmod 600 "${env_file}"
 }
@@ -133,55 +180,176 @@ EOF
 render_nginx_config() {
   local template="$1"
   local output="$2"
-  sed "s/__DOMAIN__/${DOMAIN}/g" "${template}" > "${output}"
+  sed "s/__DOMAIN__/${DOMAIN//\//\\/}/g" "${template}" > "${output}"
 }
 
 prepare_directories() {
   mkdir -p \
     "${INSTALL_DIR}/deploy/nginx" \
     "${INSTALL_DIR}/deploy/certbot/conf" \
-    "${INSTALL_DIR}/deploy/certbot/www" \
+    "${INSTALL_DIR}/deploy/certbot/www/.well-known/acme-challenge" \
     "${INSTALL_DIR}/deploy/certbot/work" \
     "${INSTALL_DIR}/deploy/certbot/logs" \
     "${INSTALL_DIR}/deploy/backups"
+  chmod -R a+rX "${INSTALL_DIR}/deploy/certbot/www"
 }
 
-build_and_start() {
-  cd "${INSTALL_DIR}"
-  log "Building Docker images..."
-  docker compose -f "${COMPOSE_FILE}" build
+compose() {
+  docker compose -f "${INSTALL_DIR}/${COMPOSE_FILE}" "$@"
+}
 
-  log "Starting services..."
-  docker compose -f "${COMPOSE_FILE}" up -d
-
-  log "Waiting for backend health..."
+wait_for_backend_live() {
+  log "Waiting for backend (database liveness)..."
   local attempts=0
-  until docker compose -f "${COMPOSE_FILE}" exec -T backend curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; do
+  until compose exec -T backend curl -fsS http://127.0.0.1:8000/health/live >/dev/null 2>&1; do
     attempts=$((attempts + 1))
-    if [[ "${attempts}" -ge 60 ]]; then
-      fail "Backend did not become healthy in time."
+    if [[ "${attempts}" -ge 90 ]]; then
+      compose logs --tail=80 backend postgres
+      fail "Backend did not become healthy in time. Check logs above."
     fi
     sleep 2
   done
 }
 
+wait_for_nginx_http() {
+  log "Waiting for nginx on port 80..."
+  local attempts=0
+  until curl -fsS "http://127.0.0.1/" -H "Host: ${DOMAIN}" >/dev/null 2>&1 \
+    || curl -fsS "http://127.0.0.1/health" -H "Host: ${DOMAIN}" >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    if [[ "${attempts}" -ge 60 ]]; then
+      compose logs --tail=80 nginx backend frontend
+      fail "Nginx did not start on port 80 in time."
+    fi
+    sleep 2
+  done
+}
+
+get_server_public_ip() {
+  curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null \
+    || curl -fsS --max-time 10 https://ifconfig.me 2>/dev/null \
+    || true
+}
+
+verify_dns() {
+  log "Verifying DNS for ${DOMAIN}..."
+  local server_ip
+  server_ip="$(get_server_public_ip)"
+  local resolved=""
+  resolved="$(dig +short "${DOMAIN}" A 2>/dev/null | tail -n1 || true)"
+
+  if [[ -z "${resolved}" ]]; then
+    warn "DNS A record for ${DOMAIN} not found yet."
+    warn "Let's Encrypt requires the domain to resolve to this server before issuing a certificate."
+    read -r -p "Continue anyway? (y/n): " answer
+    [[ "${answer}" =~ ^[Yy]$ ]] || fail "Aborted. Point ${DOMAIN} to this server and re-run install.sh."
+    return
+  fi
+
+  log "DNS ${DOMAIN} -> ${resolved}"
+  if [[ -n "${server_ip}" && "${resolved}" != "${server_ip}" ]]; then
+    warn "Domain resolves to ${resolved} but this server's public IP appears to be ${server_ip}."
+    read -r -p "Continue anyway? (y/n): " answer
+    [[ "${answer}" =~ ^[Yy]$ ]] || fail "Aborted. Fix DNS and re-run install.sh."
+  fi
+}
+
+ensure_public_http() {
+  log "Ensuring ports 80/443 are reachable for Let's Encrypt..."
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi "Status: active"; then
+    ufw allow OpenSSH >/dev/null 2>&1 || true
+    ufw allow 80/tcp >/dev/null 2>&1 || true
+    ufw allow 443/tcp >/dev/null 2>&1 || true
+  fi
+}
+
+verify_acme_webroot() {
+  log "Verifying ACME webroot is served by nginx..."
+  local token="paycollection-install-$(date +%s)"
+  local webroot="${INSTALL_DIR}/deploy/certbot/www/.well-known/acme-challenge"
+  echo "${token}" > "${webroot}/install-check"
+  chmod a+r "${webroot}/install-check"
+
+  local attempts=0
+  local ok=0
+  while [[ "${attempts}" -lt 20 ]]; do
+    if curl -fsS "http://127.0.0.1/.well-known/acme-challenge/install-check" -H "Host: ${DOMAIN}" | grep -qx "${token}"; then
+      ok=1
+      break
+    fi
+    attempts=$((attempts + 1))
+    sleep 2
+  done
+  rm -f "${webroot}/install-check"
+
+  if [[ "${ok}" -ne 1 ]]; then
+    compose logs --tail=60 nginx
+    fail "ACME challenge path is not reachable via nginx. Certbot would fail."
+  fi
+  log "ACME webroot check passed."
+}
+
+build_and_start() {
+  cd "${INSTALL_DIR}"
+  log "Building Docker images..."
+  compose build
+
+  log "Starting services..."
+  compose up -d
+
+  wait_for_backend_live
+  wait_for_nginx_http
+}
+
+reload_nginx() {
+  log "Reloading nginx..."
+  compose exec -T nginx nginx -t
+  compose exec -T nginx nginx -s reload
+}
+
 obtain_ssl_certificate() {
   log "Requesting SSL certificate for ${DOMAIN}..."
-  certbot certonly --webroot \
-    -w "${INSTALL_DIR}/deploy/certbot/www" \
-    -d "${DOMAIN}" \
-    --email "${EMAIL}" \
-    --agree-tos \
-    --non-interactive \
-    --config-dir "${INSTALL_DIR}/deploy/certbot/conf" \
-    --work-dir "${INSTALL_DIR}/deploy/certbot/work" \
-    --logs-dir "${INSTALL_DIR}/deploy/certbot/logs"
 
+  local cert_dir="${INSTALL_DIR}/deploy/certbot/conf"
+  local cert_path="${cert_dir}/live/${DOMAIN}/fullchain.pem"
+  local attempt=0
+  local max_attempts=3
+
+  while [[ "${attempt}" -lt "${max_attempts}" ]]; do
+    attempt=$((attempt + 1))
+    if certbot certonly --webroot \
+      -w "${INSTALL_DIR}/deploy/certbot/www" \
+      -d "${DOMAIN}" \
+      --email "${EMAIL}" \
+      --agree-tos \
+      --non-interactive \
+      --preferred-challenges http \
+      --config-dir "${cert_dir}" \
+      --work-dir "${INSTALL_DIR}/deploy/certbot/work" \
+      --logs-dir "${INSTALL_DIR}/deploy/certbot/logs"; then
+      break
+    fi
+
+    if [[ "${attempt}" -ge "${max_attempts}" ]]; then
+      warn "Certbot failed after ${max_attempts} attempts."
+      cat "${INSTALL_DIR}/deploy/certbot/logs/letsencrypt.log" 2>/dev/null | tail -n 40 || true
+      fail "SSL certificate could not be issued. Fix DNS/firewall and run: certbot certonly --webroot -w ${INSTALL_DIR}/deploy/certbot/www -d ${DOMAIN}"
+    fi
+    warn "Certbot attempt ${attempt} failed — retrying in 15s..."
+    sleep 15
+    verify_acme_webroot
+  done
+
+  if [[ ! -f "${cert_path}" ]]; then
+    fail "Certificate file not found at ${cert_path}"
+  fi
+
+  log "Certificate issued. Enabling HTTPS..."
   render_nginx_config \
     "${INSTALL_DIR}/deploy/nginx/production.conf.tpl" \
     "${INSTALL_DIR}/deploy/nginx/active.conf"
 
-  docker compose -f "${INSTALL_DIR}/${COMPOSE_FILE}" restart nginx
+  reload_nginx
 }
 
 configure_firewall() {
@@ -202,18 +370,23 @@ install_cli() {
 
 health_check() {
   log "Running final health check..."
-  local url="https://${DOMAIN}/health"
   local attempts=0
-  until curl -fsS "${url}" >/dev/null 2>&1; do
+  until curl -fsS "https://${DOMAIN}/health/live" >/dev/null 2>&1; do
     attempts=$((attempts + 1))
-    if [[ "${attempts}" -ge 30 ]]; then
-      warn "HTTPS health check failed — trying HTTP..."
-      curl -fsS "http://${DOMAIN}/health" || fail "Health check failed."
-      return
+    if [[ "${attempts}" -ge 40 ]]; then
+      warn "HTTPS liveness check failed — trying HTTP..."
+      if curl -fsS "http://${DOMAIN}/health/live" >/dev/null 2>&1; then
+        warn "HTTP works but HTTPS failed. Check certificate paths in deploy/nginx/active.conf"
+        curl -fsS "http://${DOMAIN}/health/live" | head -c 500
+        echo
+        return
+      fi
+      compose logs --tail=80 nginx backend
+      fail "Health check failed."
     fi
     sleep 3
   done
-  curl -fsS "${url}" | head -c 500
+  curl -fsS "https://${DOMAIN}/health" | head -c 800
   echo
 }
 
@@ -250,6 +423,12 @@ main() {
   INTERNAL_API_KEY="$(rand_hex 32)"
 
   prompt_telegram_proxy
+  prompt_bot_settings
+
+  # Defaults for optional numeric fields
+  MIN_TOPUP_RIAL="${MIN_TOPUP_RIAL:-10000}"
+  REFERRAL_DAILY_CAP="${REFERRAL_DAILY_CAP:-50}"
+  LOG_LEVEL="${LOG_LEVEL:-INFO}"
 
   install_packages
   clone_or_update_repo
@@ -264,7 +443,12 @@ main() {
 
   write_env_file
   build_and_start
+
+  ensure_public_http
+  verify_dns
+  verify_acme_webroot
   obtain_ssl_certificate
+
   setup_certbot_renewal
   configure_firewall
   install_cli

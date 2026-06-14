@@ -7,6 +7,8 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
 
+from app.utils.security import main_cb
+
 ENTRY_TTL_SECONDS = 3600
 
 
@@ -39,7 +41,11 @@ class RateLimitMiddleware(BaseMiddleware):
         elif isinstance(event, CallbackQuery):
             callback = event
             user_id = callback.from_user.id
-            is_check_join = "check_join" in (callback.data or "")
+            if callback.data:
+                try:
+                    is_check_join = main_cb.unpack(callback.data).action == "check_join"
+                except (TypeError, ValueError):
+                    is_check_join = False
 
         if user_id is None:
             return await handler(event, data)

@@ -28,8 +28,8 @@ echo "[update] Waiting for health check..."
 attempts=0
 healthy=0
 while [[ "${attempts}" -lt 60 ]]; do
-  if docker compose -f "${COMPOSE_FILE}" exec -T backend curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
-    if [[ -n "${DOMAIN}" ]] && curl -fsSk "https://${DOMAIN}/health" >/dev/null 2>&1; then
+  if docker compose -f "${COMPOSE_FILE}" exec -T backend curl -fsS http://127.0.0.1:8000/health/live >/dev/null 2>&1; then
+    if [[ -n "${DOMAIN}" ]] && curl -fsSk "https://${DOMAIN}/health/live" >/dev/null 2>&1; then
       healthy=1
       break
     elif [[ -z "${DOMAIN}" ]]; then

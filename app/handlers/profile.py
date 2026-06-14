@@ -5,6 +5,8 @@ from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.user_service import build_profile_text, can_earn_referral_rewards, get_user_by_telegram_id
+from app.keyboards.main import back_menu_keyboard
+from app.utils.callback_ui import edit_callback_message
 from app.utils.security import main_cb
 
 router = Router()
@@ -14,7 +16,7 @@ router = Router()
 async def on_profile(callback: CallbackQuery, session: AsyncSession) -> None:
     user = await get_user_by_telegram_id(session, callback.from_user.id)
     if user is None:
-        await callback.message.answer("ابتدا با /start وارد شوید.")
+        await edit_callback_message(callback, "ابتدا با /start وارد شوید.")
         await callback.answer()
         return
 
@@ -22,7 +24,11 @@ async def on_profile(callback: CallbackQuery, session: AsyncSession) -> None:
         await callback.answer("ابتدا حساب خود را احراز کنید.", show_alert=True)
         return
 
-    await callback.message.answer(build_profile_text(user))
+    await edit_callback_message(
+        callback,
+        build_profile_text(user),
+        reply_markup=back_menu_keyboard(),
+    )
     await callback.answer()
 
 
@@ -30,7 +36,7 @@ async def on_profile(callback: CallbackQuery, session: AsyncSession) -> None:
 async def on_referral(callback: CallbackQuery, session: AsyncSession) -> None:
     user = await get_user_by_telegram_id(session, callback.from_user.id)
     if user is None:
-        await callback.message.answer("ابتدا با /start وارد شوید.")
+        await edit_callback_message(callback, "ابتدا با /start وارد شوید.")
         await callback.answer()
         return
 
@@ -46,5 +52,5 @@ async def on_referral(callback: CallbackQuery, session: AsyncSession) -> None:
         "زیر مجموعه ای که شما میارین حتما باید شماره ایران باشه و کپچا اول ربات رو حل کنه و جوین چنل مجموعه پِی بشه، در غیر این صورت کد رفرال شما ثبت نخواهد شد.\n\n"
         f"لینک اختصاصی شما:\n{referral_link}"
     )
-    await callback.message.answer(text)
+    await edit_callback_message(callback, text, reply_markup=back_menu_keyboard())
     await callback.answer()

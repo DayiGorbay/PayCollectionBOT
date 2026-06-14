@@ -25,7 +25,12 @@ SERVICE_PROTECTED = frozenset({"view", "sub_link", "config_link", "delete", "ren
 
 
 class VerificationMiddleware(BaseMiddleware):
-    async def __call__(self, handler, event: TelegramObject, data: dict[str, Any]):
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
         if not isinstance(event, CallbackQuery) or not event.data:
             return await handler(event, data)
 

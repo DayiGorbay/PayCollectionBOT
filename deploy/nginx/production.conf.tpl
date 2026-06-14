@@ -22,6 +22,8 @@ server {
     ssl_session_cache shared:PayCollectionSSL:10m;
     ssl_protocols TLSv1.2 TLSv1.3;
 
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
     gzip on;
     gzip_vary on;
     gzip_proxied any;
@@ -34,31 +36,52 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-    location /health {
-        proxy_pass http://backend:8000/health;
+    location /health/live {
+        set $backend_host backend;
+        proxy_pass http://$backend_host:8000$request_uri;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
+    }
+
+    location /health {
+        set $backend_host backend;
+        proxy_pass http://$backend_host:8000$request_uri;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
     }
 
     location /api/ {
-        proxy_pass http://backend:8000/api/;
+        set $backend_host backend;
+        proxy_pass http://$backend_host:8000$request_uri;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 120s;
         client_max_body_size 15m;
     }
 
     location / {
-        proxy_pass http://frontend:80;
+        set $frontend_host frontend;
+        proxy_pass http://$frontend_host:80$request_uri;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 60s;
     }
 }

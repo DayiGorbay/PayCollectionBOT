@@ -16,6 +16,12 @@ def _build_channel_url(channel_link: str) -> str:
     return f"https://t.me/{cleaned}"
 
 
+def back_menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="« بازگشت به منو", callback_data=_cb("back_menu"))]]
+    )
+
+
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[

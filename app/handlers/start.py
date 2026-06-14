@@ -6,8 +6,9 @@ from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.keyboards.main import captcha_keyboard, force_join_keyboard, main_menu_keyboard
+from app.keyboards.main import back_menu_keyboard, captcha_keyboard, force_join_keyboard, main_menu_keyboard
 from app.services.user_service import get_or_create_user, mark_channel_joined, register_referral
+from app.utils.callback_ui import edit_callback_message
 from app.utils.security import main_cb
 from app.utils.telegram import get_channel_chat_id, is_channel_configured, is_channel_member
 
@@ -21,6 +22,8 @@ START_TEXT = (
     "📞 پشتیبانی حرفه‌ای 24/7\n\n"
     "از منوی زیر بخش مورد نظر خود را انتخاب کنید."
 )
+
+VERIFICATION_TEXT = "برای تایید حساب خود روی دکمه زیر کلیک کنید 👇"
 
 HELP_TEXT = (
     "❄️ تمامی چیز هایی که باید در مورد ربات مجموعه پِی بدونید:\n\n"
@@ -69,13 +72,10 @@ async def on_start(message: Message, session: AsyncSession) -> None:
     if not user.joined_channel:
         await mark_channel_joined(session, user)
 
-    await message.answer(START_TEXT, reply_markup=main_menu_keyboard())
-
-    if not user.verified:
-        await message.answer(
-            "برای تایید حساب خود روی دکمه زیر کلیک کنید 👇",
-            reply_markup=captcha_keyboard(),
-        )
+    if user.verified and not user.is_suspicious:
+        await message.answer(START_TEXT, reply_markup=main_menu_keyboard())
+    else:
+        await message.answer(VERIFICATION_TEXT, reply_markup=captcha_keyboard())
 
 
 @router.message(Command(commands=["help"]))
@@ -85,7 +85,7 @@ async def on_help(message: Message) -> None:
 
 @router.callback_query(main_cb.filter(F.action == "help"))
 async def on_help_callback(callback: CallbackQuery) -> None:
-    await callback.message.answer(HELP_TEXT)
+    await edit_callback_message(callback, HELP_TEXT, reply_markup=back_menu_keyboard())
     await callback.answer()
 
 

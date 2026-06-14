@@ -102,6 +102,20 @@ def create_app() -> FastAPI:
             content={"message": "داده ورودی نامعتبر است.", "detail": jsonable_encoder(exc.errors())},
         )
 
+    @app.get("/health/live")
+    async def health_live():
+        """Liveness probe — database only (used by Docker/installer)."""
+        db_ok, db_error = await check_database()
+        payload = {
+            "status": "ok" if db_ok else "unavailable",
+            "api": "ok",
+            "database": {"ok": db_ok, "error": db_error},
+        }
+        return JSONResponse(
+            status_code=status.HTTP_200_OK if db_ok else status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=payload,
+        )
+
     @app.get("/health")
     async def health():
         db_ok, db_error = await check_database()

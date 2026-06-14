@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.handlers.start import START_TEXT
 from app.keyboards.main import cancel_payment_keyboard, main_menu_keyboard, products_keyboard
 from app.models.order import Order
 from app.services.order_service import (
@@ -22,8 +23,9 @@ from app.services.order_service import (
 from app.services.product_service import get_product, list_active_products
 from app.services.user_service import get_user_by_telegram_id
 from app.states.shop import ShopState
+from app.utils.callback_ui import edit_callback_message
 from app.utils.files import download_receipt_photo, format_rial
-from app.utils.security import main_cb
+from app.utils.security import MainCallback, main_cb
 
 router = Router()
 
@@ -82,12 +84,17 @@ async def on_buy_service(
 
     products = await list_active_products(session)
     if not products:
-        await callback.message.answer("فعلاً محصولی برای فروش تعریف نشده است.")
+        await edit_callback_message(
+            callback,
+            "فعلاً محصولی برای فروش تعریف نشده است.",
+            reply_markup=main_menu_keyboard(),
+        )
         await callback.answer()
         return
 
     await state.clear()
-    await callback.message.answer(
+    await edit_callback_message(
+        callback,
         "🛒 یکی از سرویس‌های زیر را انتخاب کنید:",
         reply_markup=products_keyboard(products),
     )
@@ -99,15 +106,15 @@ async def on_select_product(
     callback: CallbackQuery,
     session: AsyncSession,
     state: FSMContext,
+    callback_data: MainCallback,
 ) -> None:
     user, error = await _require_verified_user(session, callback.from_user.id)
     if error:
         await callback.answer(error, show_alert=True)
         return
 
-    data = main_cb.parse(callback.data or "")
     try:
-        product_id = int(data.get("item_id", "0"))
+        product_id = int(callback_data.item_id or "0")
     except ValueError:
         await callback.answer("محصول نامعتبر است.", show_alert=True)
         return
@@ -126,7 +133,8 @@ async def on_select_product(
     await state.update_data(product_id=product.id)
 
     duration_label = product.duration or f"{product.duration_days} روز"
-    await callback.message.answer(
+    await edit_callback_message(
+        callback,
         f"📦 سرویس: {product.name}\n"
         f"⏱ مدت: {duration_label}\n"
         f"💰 قیمت: {product.price_label}\n\n"
@@ -218,10 +226,11 @@ async def on_topup_balance(
         return
 
     await state.set_state(ShopState.waiting_topup_amount)
-    await callback.message.answer(
+    await edit_callback_message(
+        callback,
         f"💰 مبلغ شارژ را به <b>تومان</b> وارد کنید (حداقل {format_rial(settings.MIN_TOPUP_RIAL)}):",
-        parse_mode="HTML",
         reply_markup=cancel_payment_keyboard(),
+        parse_mode="HTML",
     )
     await callback.answer()
 
@@ -333,12 +342,16 @@ async def on_cancel_payment(
             await cancel_pending_order(session, order)
 
     await state.clear()
-    await callback.message.answer("سفارش لغو شد.", reply_markup=main_menu_keyboard())
+    await edit_callback_message(
+        callback,
+        "سفارش لغو شد.",
+        reply_markup=main_menu_keyboard(),
+    )
     await callback.answer()
 
 
 @router.callback_query(main_cb.filter(F.action == "back_menu"))
 async def on_back_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await callback.message.answer("بازگشت به منو:", reply_markup=main_menu_keyboard())
+    await edit_callback_message(callback, START_TEXT, reply_markup=main_menu_keyboard())
     await callback.answer()
