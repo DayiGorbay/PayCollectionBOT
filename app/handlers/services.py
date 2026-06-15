@@ -10,9 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.keyboards.main import back_menu_keyboard, main_menu_keyboard, products_keyboard
 from app.keyboards.services import service_detail_keyboard, services_list_keyboard
 from app.services.backend_client import delete_user_service_via_api
-from app.services.product_service import get_product, list_active_products
-from app.services.service_service import get_service, list_active_services
-from app.states.shop import ShopState
+from app.services.product_service import get_product
+from app.services.service_service import get_service, list_active_services, mark_service_deleted
 from app.utils.callback_ui import edit_callback_message
 from app.utils.qrcode_util import make_qr_png_bytes
 from app.utils.security import ServiceCallback, main_cb, service_cb
@@ -167,7 +166,7 @@ async def on_service_delete(
         await callback.answer(str(exc), show_alert=True)
         return
 
-    await session.refresh(svc)
+    await mark_service_deleted(session, svc)
     await edit_callback_message(
         callback,
         "سرویس حذف شد.",

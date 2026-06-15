@@ -46,10 +46,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'اتصال رایگان', path: '/free-connect', icon: Gift },
     ],
   },
-  {
-    title: 'سیستم',
-    items: [{ label: 'تنظیمات', path: '/settings', icon: Settings }],
-  },
 ];
 
 export const ROUTE_META: Record<string, { title: string; subtitle?: string }> = {
