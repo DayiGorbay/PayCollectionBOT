@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 def _last_sync_label(dt: datetime | None) -> str:
     if dt is None:
         return "هرگز"
-    return dt.strftime("%Y/%m/%d %H:%M")
+    from app.utils.jalali import format_jalali_datetime
+
+    return format_jalali_datetime(dt)
 
 
 def panel_to_out(panel: Panel) -> PanelOut:
@@ -231,3 +233,41 @@ async def test_panel_credentials(payload: PanelCreate) -> PanelTestResult:
         provider = XUIProvider(temp, http, noop)
     result = await provider.test_connection()
     return PanelTestResult(ok=result.ok, message=result.message)
+
+
+async def fetch_panel_inbounds(payload: PanelCreate) -> list[dict]:
+    from app.core.http_client import PanelHttpClient
+    from app.providers.marzban import MarzbanProvider
+    from app.providers.xui import XUIProvider
+
+    temp = _panel_from_create(payload)
+
+    async def noop(_: dict) -> None:
+        return None
+
+    http = PanelHttpClient(panel_id=0, panel_type=temp.panel_type)
+    if temp.panel_type == "marzban":
+        provider = MarzbanProvider(temp, http, noop)
+    else:
+        provider = XUIProvider(temp, http, noop)
+
+    inbounds = await provider.get_inbounds()
+    items: list[dict] = []
+    for inbound in inbounds:
+        label = inbound.tag or str(inbound.id)
+        if inbound.port:
+            label = f"{label} ({inbound.protocol}:{inbound.port})"
+        items.append(
+            {
+                "id": str(inbound.id),
+                "tag": inbound.tag,
+                "protocol": inbound.protocol,
+                "port": inbound.port,
+                "label": label,
+            }
+        )
+    return items
+
+
+async def delete_panel(session: AsyncSession, panel: Panel) -> None:
+    await session.delete(panel)

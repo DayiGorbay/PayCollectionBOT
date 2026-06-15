@@ -22,6 +22,7 @@ export default function OrderDetailModal({ orderId, onClose, onUpdated }: Props)
   const [detail, setDetail] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState(false);
+  const [blockUserOnApprove, setBlockUserOnApprove] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -61,7 +62,7 @@ export default function OrderDetailModal({ orderId, onClose, onUpdated }: Props)
     if (!orderId) return;
     setActing(true);
     try {
-      await approveOrder(orderId);
+      await approveOrder(orderId, blockUserOnApprove);
       addToast({ title: 'تأیید شد', description: `سفارش #${orderId} تأیید شد.`, variant: 'success' });
       onUpdated();
       onClose();
@@ -174,6 +175,19 @@ export default function OrderDetailModal({ orderId, onClose, onUpdated }: Props)
             className="flex flex-col gap-2 border-t p-4 sm:flex-row-reverse sm:justify-start"
             style={{ borderColor: 'var(--border)' }}
           >
+            <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] sm:mr-auto">
+              <input
+                type="checkbox"
+                checked={blockUserOnApprove}
+                onChange={(e) => setBlockUserOnApprove(e.target.checked)}
+              />
+              مسدود کردن کاربر پس از تأیید
+            </label>
+            {(detail.walletPaidRial ?? 0) > 0 && !receiptUrl ? (
+              <p className="w-full text-xs text-[var(--text-muted)] sm:order-first sm:w-auto">
+                بخشی از مبلغ ({detail.walletPaidRial?.toLocaleString('fa-IR')} ریال) از کیف پول پرداخت شده است.
+              </p>
+            ) : null}
             <button
               type="button"
               className="btn-primary inline-flex items-center justify-center gap-2"

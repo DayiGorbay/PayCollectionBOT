@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import { createProduct, fetchProducts } from '../services/api';
+import { createProduct, deleteProduct, fetchProducts, updateProduct } from '../services/api';
 import { getApiErrorMessage } from '../services/apiClient';
 import { ROUTE_META } from '../config/navigation';
 import ProductTable from '../components/ProductTable';
@@ -8,25 +8,56 @@ import ProductFormModal from '../components/ProductFormModal';
 import { useAppContext } from '../context/AppContext';
 import type { ProductCreatePayload } from '../types/api';
 
+type ProductRow = ProductCreatePayload & { id: number; price?: string; panel?: string; duration?: string };
+
 export default function ProductsPage() {
   const { addToast } = useAppContext();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<ProductRow | null>(null);
   const meta = ROUTE_META['/products'];
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetchProducts()
       .then((data) => setProducts(data))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, []);
 
   const handleCreate = async (payload: ProductCreatePayload) => {
     try {
-      const created = await createProduct(payload);
-      setProducts((prev) => [created, ...prev]);
+      await createProduct(payload);
       addToast({ title: 'محصول جدید', description: payload.name, variant: 'success' });
       setModalOpen(false);
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
+  };
+
+  const handleUpdate = async (payload: ProductCreatePayload) => {
+    if (!editing) return;
+    try {
+      await updateProduct(editing.id, payload);
+      addToast({ title: 'ویرایش شد', description: payload.name, variant: 'success' });
+      setEditing(null);
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
+  };
+
+  const handleDelete = async (product: ProductRow) => {
+    if (!window.confirm(`محصول «${product.name}» حذف شود؟`)) return;
+    try {
+      await deleteProduct(product.id);
+      addToast({ title: 'حذف شد', description: product.name, variant: 'info' });
+      load();
     } catch (error) {
       addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
     }
@@ -62,11 +93,24 @@ export default function ProductsPage() {
           </div>
         </div>
         <div className="p-3 sm:p-4">
-          <ProductTable products={products} loading={loading} />
+          <ProductTable
+            products={products}
+            loading={loading}
+            onEdit={(product) => setEditing(product)}
+            onDelete={handleDelete}
+          />
         </div>
       </section>
 
       <ProductFormModal open={modalOpen} onClose={() => setModalOpen(false)} onSubmit={handleCreate} />
+      <ProductFormModal
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        onSubmit={handleUpdate}
+        initial={editing ?? undefined}
+        title="ویرایش محصول"
+        submitLabel="ذخیره تغییرات"
+      />
     </div>
   );
 }

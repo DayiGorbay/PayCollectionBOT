@@ -8,7 +8,7 @@ from app.api.deps import require_admin_role
 from app.database import get_db
 from app.models.admin_user import AdminUser
 from app.models.catalog import Panel, Product
-from app.schemas.products import ProductCreate, ProductOut
+from app.schemas.products import ProductCreate, ProductOut, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -75,3 +75,52 @@ async def create_product(
     await db.flush()
     await db.refresh(product)
     return _product_out(product)
+
+
+@router.patch("/{product_id}", response_model=ProductOut, response_model_by_alias=True)
+async def update_product(
+    product_id: int,
+    payload: ProductUpdate,
+    _: AdminUser = Depends(require_admin_role),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="محصول یافت نشد.")
+
+    data = payload.model_dump(exclude_unset=True, by_alias=True)
+    if "price" in data:
+        product.price_rial = data["price"]
+        product.price_label = _format_price_label(data["price"])
+    if "duration_days" in data:
+        product.duration_days = data["duration_days"]
+        product.duration = _format_duration_label(data["duration_days"])
+    if "panel_id" in data:
+        panel = await db.get(Panel, data["panel_id"])
+        if panel is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="پنل انتخاب‌شده یافت نشد.")
+        product.panel_id = panel.id
+        product.panel = panel.name
+    if "name" in data:
+        product.name = data["name"]
+    if "category" in data:
+        product.category = data["category"]
+    if "is_active" in data:
+        product.is_active = data["is_active"]
+
+    await db.flush()
+    await db.refresh(product)
+    return _product_out(product)
+
+
+@router.delete("/{product_id}")
+async def delete_product(
+    product_id: int,
+    _: AdminUser = Depends(require_admin_role),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="محصول یافت نشد.")
+    await db.delete(product)
+    return {"message": "محصول حذف شد."}

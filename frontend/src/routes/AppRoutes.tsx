@@ -10,6 +10,8 @@ import ProductsPage from '../pages/ProductsPage';
 import TransactionsPage from '../pages/TransactionsPage';
 import PanelsPage from '../pages/PanelsPage';
 import DiscountsPage from '../pages/DiscountsPage';
+import BotConfigPage from '../pages/BotConfigPage';
+import FreeConnectPage from '../pages/FreeConnectPage';
 import SettingsPage from '../pages/SettingsPage';
 
 function AppRoutes() {
@@ -29,6 +31,8 @@ function AppRoutes() {
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="panels" element={<PanelsPage />} />
           <Route path="discounts" element={<DiscountsPage />} />
+          <Route path="bot-config" element={<BotConfigPage />} />
+          <Route path="free-connect" element={<FreeConnectPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>

@@ -29,8 +29,69 @@ export async function fetchTransactions() {
   return data;
 }
 
+export async function fetchTransactionStats() {
+  const { data } = await apiClient.get('/transactions/stats');
+  return data;
+}
+
 export async function fetchPanels() {
   const { data } = await apiClient.get('/panels');
+  return data;
+}
+
+export async function blockUser(userId: number, blocked: boolean) {
+  const { data } = await apiClient.patch(`/users/${userId}/block`, { blocked });
+  return data;
+}
+
+export async function createDiscount(payload: Record<string, unknown>) {
+  const { data } = await apiClient.post('/discounts', payload);
+  return data;
+}
+
+export async function deleteDiscount(id: number) {
+  await apiClient.delete(`/discounts/${id}`);
+}
+
+export async function updateProduct(id: number, payload: Record<string, unknown>) {
+  const { data } = await apiClient.patch(`/products/${id}`, payload);
+  return data;
+}
+
+export async function deleteProduct(id: number) {
+  await apiClient.delete(`/products/${id}`);
+}
+
+export async function deletePanel(id: number) {
+  await apiClient.delete(`/panels/${id}`);
+}
+
+export async function previewPanelInbounds(payload: PanelCreatePayload) {
+  const { data } = await apiClient.post('/panels/preview-inbounds', mapPanelPayload(payload));
+  return data as Array<{ id: string; label: string; protocol?: string; port?: number }>;
+}
+
+export async function updateDiscount(id: number, payload: Record<string, unknown>) {
+  const { data } = await apiClient.patch(`/discounts/${id}`, payload);
+  return data;
+}
+
+export async function fetchBotSettings() {
+  const { data } = await apiClient.get('/bot-settings');
+  return data;
+}
+
+export async function saveBotSettings(payload: Record<string, unknown>) {
+  await apiClient.put('/bot-settings', payload);
+}
+
+export async function fetchFreeConnectConfig() {
+  const { data } = await apiClient.get('/free-connect');
+  return data;
+}
+
+export async function saveFreeConnectConfig(payload: Record<string, unknown>) {
+  const { data } = await apiClient.put('/free-connect', payload);
   return data;
 }
 
@@ -54,8 +115,8 @@ export async function fetchOrderReceiptBlob(orderId: number): Promise<string> {
   return URL.createObjectURL(data);
 }
 
-export async function approveOrder(orderId: number): Promise<void> {
-  await apiClient.post(`/orders/${orderId}/approve`);
+export async function approveOrder(orderId: number, blockUser = false): Promise<void> {
+  await apiClient.post(`/orders/${orderId}/approve`, { blockUser });
 }
 
 export async function rejectOrder(orderId: number): Promise<void> {

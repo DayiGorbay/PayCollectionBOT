@@ -11,6 +11,7 @@ from app.handlers import register_routers
 from app.middlewares.db_session import DbSessionMiddleware
 from app.middlewares.force_join import ForceJoinMiddleware
 from app.middlewares.rate_limit import RateLimitMiddleware
+from app.middlewares.block_user import BlockUserMiddleware
 from app.middlewares.verification import VerificationMiddleware
 from app.models.order import Order  # noqa: F401
 from app.models.panel import Panel  # noqa: F401
@@ -98,6 +99,8 @@ async def main() -> None:
 
     dp.message.middleware(DbSessionMiddleware())
     dp.callback_query.middleware(DbSessionMiddleware())
+    dp.message.middleware(BlockUserMiddleware())
+    dp.callback_query.middleware(BlockUserMiddleware())
     dp.message.middleware(RateLimitMiddleware())
     dp.callback_query.middleware(RateLimitMiddleware())
     dp.message.middleware(ForceJoinMiddleware())

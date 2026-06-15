@@ -9,6 +9,9 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSubmit: (payload: ProductCreatePayload) => void | Promise<void>;
+  initial?: Partial<ProductCreatePayload> & { id?: number; price?: string | number; durationDays?: number };
+  title?: string;
+  submitLabel?: string;
 };
 
 const emptyForm = {
@@ -20,7 +23,14 @@ const emptyForm = {
   category: '',
 };
 
-export default function ProductFormModal({ open, onClose, onSubmit }: Props) {
+export default function ProductFormModal({
+  open,
+  onClose,
+  onSubmit,
+  initial,
+  title = 'افزودن محصول',
+  submitLabel = 'ثبت محصول',
+}: Props) {
   const [form, setForm] = useState(emptyForm);
   const [panels, setPanels] = useState<PanelOption[]>([]);
   const [loadingPanels, setLoadingPanels] = useState(false);
@@ -29,6 +39,20 @@ export default function ProductFormModal({ open, onClose, onSubmit }: Props) {
     if (!open) {
       setForm(emptyForm);
       return;
+    }
+    if (initial) {
+      const priceValue =
+        typeof initial.price === 'number'
+          ? String(initial.price)
+          : String(initial.price ?? '').replace(/\D/g, '') || '';
+      setForm({
+        name: initial.name ?? '',
+        price: priceValue,
+        durationDays: String(initial.durationDays ?? 30),
+        panelId: String(initial.panelId ?? ''),
+        code: initial.code ?? '',
+        category: initial.category ?? '',
+      });
     }
     setLoadingPanels(true);
     fetchPanels()
@@ -41,7 +65,7 @@ export default function ProductFormModal({ open, onClose, onSubmit }: Props) {
         ),
       )
       .finally(() => setLoadingPanels(false));
-  }, [open]);
+  }, [open, initial]);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +105,7 @@ export default function ProductFormModal({ open, onClose, onSubmit }: Props) {
       >
         <div className="flex items-start justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
           <div>
-            <h2 className="text-lg font-semibold">افزودن محصول</h2>
+            <h2 className="text-lg font-semibold">{title}</h2>
             <p className="mt-1 text-sm text-[var(--text-muted)]">این محصول در ربات تلگرام نمایش داده می‌شود</p>
           </div>
           <button type="button" className="icon-btn shrink-0" onClick={onClose} aria-label="بستن">
@@ -196,7 +220,7 @@ export default function ProductFormModal({ open, onClose, onSubmit }: Props) {
               انصراف
             </button>
             <button type="submit" className="btn-primary w-full sm:w-auto" disabled={panels.length === 0}>
-              ثبت محصول
+              {submitLabel}
             </button>
           </div>
         </form>

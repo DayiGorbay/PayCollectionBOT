@@ -19,6 +19,8 @@ PROTECTED_ACTIONS = frozenset({
     "buy_service",
     "topup_balance",
     "select_product",
+    "pay_service",
+    "apply_discount",
 })
 
 SERVICE_PROTECTED = frozenset({"view", "sub_link", "config_link", "delete", "renew", "back_list"})

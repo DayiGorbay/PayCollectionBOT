@@ -10,10 +10,12 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.admin_user import AdminUser
 from app.models.catalog import Order
-from app.schemas.orders import OrderDetailOut, OrderListItem
+from app.schemas.orders import OrderApproveBody, OrderDetailOut, OrderListItem
 from app.services.order_admin_service import (
     approve_order,
+    block_user_by_telegram_id,
     get_order,
+    order_can_approve,
     order_to_detail,
     order_to_list_item,
     reject_order,
@@ -70,17 +72,20 @@ async def get_order_receipt(
 @router.post("/{order_id}/approve", response_model=OrderDetailOut, response_model_by_alias=True)
 async def approve_order_endpoint(
     order_id: int,
+    body: OrderApproveBody | None = None,
     _: AdminUser = Depends(require_admin_role),
     db: AsyncSession = Depends(get_db),
 ):
     order = await get_order(db, order_id)
     if order is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="سفارش یافت نشد.")
-    if not order.receipt_path:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رسید هنوز ارسال نشده است.")
+    if not order_can_approve(order):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="رسید پرداخت یا پرداخت کیف پول ثبت نشده است.")
 
     try:
         order = await approve_order(db, order)
+        if body and body.block_user:
+            await block_user_by_telegram_id(db, order.telegram_user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

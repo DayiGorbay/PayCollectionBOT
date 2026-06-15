@@ -64,6 +64,27 @@ def products_keyboard(products) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def product_payment_keyboard(product_id: int) -> InlineKeyboardMarkup:
+    pid = str(product_id)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="💳 پرداخت سرویس", callback_data=_cb("pay_service", pid))],
+            [InlineKeyboardButton(text="🏷 اعمال کد تخفیف", callback_data=_cb("apply_discount", pid))],
+            [InlineKeyboardButton(text="« برگشت", callback_data=_cb("buy_service"))],
+        ]
+    )
+
+
+def discounted_pay_keyboard(product_id: int) -> InlineKeyboardMarkup:
+    pid = str(product_id)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="💳 پرداخت", callback_data=_cb("pay_service", pid))],
+            [InlineKeyboardButton(text="« برگشت", callback_data=_cb("select_product", pid))],
+        ]
+    )
+
+
 def cancel_payment_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="❌ انصراف", callback_data=_cb("cancel_payment"))]]

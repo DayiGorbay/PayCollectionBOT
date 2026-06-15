@@ -26,6 +26,7 @@ class TelegramUser(Base):
     referral_finalized: Mapped[bool] = mapped_column(Boolean, default=False)
     referral_finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     is_suspicious: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     inviter: Mapped[TelegramUser | None] = relationship(

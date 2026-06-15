@@ -1,6 +1,10 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { X, Wifi } from 'lucide-react';
+import { Download, X, Wifi } from 'lucide-react';
+import { previewPanelInbounds } from '../services/api';
+import { getApiErrorMessage } from '../services/apiClient';
 import type { PanelCreatePayload } from '../types/api';
+
+type InboundOption = { id: string; label: string; protocol?: string; port?: number; tag?: string };
 
 type Props = {
   open: boolean;
@@ -17,7 +21,6 @@ const defaultForm: PanelCreatePayload = {
   panelType: 'marzban',
   usernamePanel: '',
   passwordPanel: '',
-  status: 'فعال',
   authMode: 'bearer',
   apiToken: '',
   inbounds: '',
@@ -25,14 +28,41 @@ const defaultForm: PanelCreatePayload = {
   inboundId: undefined,
 };
 
+function buildMarzbanConfig(selected: InboundOption[]) {
+  const inbounds: Record<string, string[]> = {};
+  const proxies: Record<string, Record<string, never>> = {};
+  for (const item of selected) {
+    const protocol = item.protocol || 'vless';
+    const tag = item.tag || item.id;
+    inbounds[protocol] = inbounds[protocol] || [];
+    if (!inbounds[protocol].includes(tag)) {
+      inbounds[protocol].push(tag);
+    }
+    proxies[protocol] = proxies[protocol] || {};
+  }
+  return {
+    inbounds: JSON.stringify(inbounds),
+    proxies: JSON.stringify(proxies),
+  };
+}
+
 export default function PanelFormModal({ open, onClose, onSubmit, onTest, testing = false }: Props) {
   const [form, setForm] = useState<PanelCreatePayload>(defaultForm);
+  const [inboundOptions, setInboundOptions] = useState<InboundOption[]>([]);
+  const [selectedInboundIds, setSelectedInboundIds] = useState<string[]>([]);
+  const [loadingInbounds, setLoadingInbounds] = useState(false);
+  const [inboundError, setInboundError] = useState<string | null>(null);
 
   const isMarzban = form.panelType === 'marzban';
   const isXui = form.panelType === 'xui';
 
   useEffect(() => {
-    if (!open) setForm(defaultForm);
+    if (!open) {
+      setForm(defaultForm);
+      setInboundOptions([]);
+      setSelectedInboundIds([]);
+      setInboundError(null);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -48,33 +78,78 @@ export default function PanelFormModal({ open, onClose, onSubmit, onTest, testin
     };
   }, [open, onClose]);
 
-  const payload = useMemo(
+  const basePayload = useMemo(
     (): PanelCreatePayload => ({
       ...form,
       codePanel: form.codePanel.trim(),
       apiUrl: form.apiUrl.trim().replace(/\/$/, ''),
-      inbounds: form.inbounds?.trim() || undefined,
-      proxies: form.proxies?.trim() || undefined,
       apiToken: form.apiToken?.trim() || undefined,
-      inboundId: isXui && form.inboundId ? Number(form.inboundId) : undefined,
+      status: 'فعال',
     }),
-    [form, isXui],
+    [form],
   );
+
+  const payload = useMemo((): PanelCreatePayload => {
+    if (isMarzban && selectedInboundIds.length > 0) {
+      const selected = inboundOptions.filter((item) => selectedInboundIds.includes(item.id));
+      const config = buildMarzbanConfig(selected);
+      return { ...basePayload, ...config };
+    }
+    if (isXui && selectedInboundIds.length > 0) {
+      const first = selectedInboundIds[0];
+      return { ...basePayload, inboundId: Number(first) };
+    }
+    return basePayload;
+  }, [basePayload, inboundOptions, isMarzban, isXui, selectedInboundIds]);
 
   if (!open) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (selectedInboundIds.length === 0) {
+      setInboundError('حداقل یک Inbound انتخاب کنید.');
+      return;
+    }
     await onSubmit(payload);
     onClose();
   };
 
   const handleTest = async () => {
-    if (onTest) await onTest(payload);
+    if (onTest) await onTest(basePayload);
+  };
+
+  const handleFetchInbounds = async () => {
+    setLoadingInbounds(true);
+    setInboundError(null);
+    try {
+      const items = await previewPanelInbounds(basePayload);
+      setInboundOptions(items);
+      setSelectedInboundIds([]);
+      if (items.length === 0) {
+        setInboundError('Inbound فعالی یافت نشد.');
+      }
+    } catch (error) {
+      setInboundError(getApiErrorMessage(error));
+    } finally {
+      setLoadingInbounds(false);
+    }
+  };
+
+  const toggleInbound = (id: string) => {
+    if (isXui) {
+      setSelectedInboundIds([id]);
+      return;
+    }
+    setSelectedInboundIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const set = <K extends keyof PanelCreatePayload>(key: K, value: PanelCreatePayload[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (key === 'panelType') {
+      setInboundOptions([]);
+      setSelectedInboundIds([]);
+      setInboundError(null);
+    }
   };
 
   return (
@@ -89,7 +164,7 @@ export default function PanelFormModal({ open, onClose, onSubmit, onTest, testin
         <div className="flex items-start justify-between gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
           <div>
             <h2 className="text-lg font-semibold">پنل جدید</h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">اتصال از طریق OpenAPI رسمی Marzban / 3X-UI</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Inbounds از API پنل دریافت و انتخاب می‌شوند</p>
           </div>
           <button type="button" className="icon-btn shrink-0" onClick={onClose} aria-label="بستن">
             <X className="h-5 w-5" />
@@ -189,53 +264,46 @@ export default function PanelFormModal({ open, onClose, onSubmit, onTest, testin
                     />
                   </div>
                 ) : null}
-                <div>
-                  <label className="mb-2 block text-sm text-[var(--text-muted)]">شناسه Inbound *</label>
-                  <input
-                    type="number"
-                    className="input-field"
-                    value={form.inboundId ?? ''}
-                    onChange={(e) => set('inboundId', e.target.value ? Number(e.target.value) : undefined)}
-                    min={1}
-                    required
-                  />
-                </div>
               </div>
             ) : null}
 
-            {isMarzban ? (
-              <div className="space-y-4 rounded-2xl border p-4" style={{ borderColor: 'var(--border)' }}>
-                <p className="text-sm font-medium text-[var(--accent)]">تنظیمات Marzban (UserCreate)</p>
-                <div>
-                  <label className="mb-2 block text-sm text-[var(--text-muted)]">Inbounds (JSON)</label>
-                  <textarea
-                    className="input-field resize-none font-mono text-xs"
-                    rows={3}
-                    value={form.inbounds ?? ''}
-                    onChange={(e) => set('inbounds', e.target.value)}
-                    placeholder='{"vless": ["VLESS_INBOUND"], "vmess": ["VMess TCP"]}'
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm text-[var(--text-muted)]">Proxies (JSON)</label>
-                  <textarea
-                    className="input-field resize-none font-mono text-xs"
-                    rows={3}
-                    value={form.proxies ?? ''}
-                    onChange={(e) => set('proxies', e.target.value)}
-                    placeholder='{"vless": {}, "vmess": {}}'
-                  />
-                </div>
+            <div className="space-y-3 rounded-2xl border p-4" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-[var(--accent)]">Inbounds</p>
+                <button
+                  type="button"
+                  className="btn-ghost inline-flex items-center gap-2 py-1.5 text-xs"
+                  disabled={loadingInbounds}
+                  onClick={handleFetchInbounds}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {loadingInbounds ? 'در حال دریافت...' : 'دریافت از پنل'}
+                </button>
               </div>
-            ) : null}
-
-            <div>
-              <label className="mb-2 block text-sm text-[var(--text-muted)]">وضعیت</label>
-              <select className="input-field" value={form.status} onChange={(e) => set('status', e.target.value)}>
-                <option value="فعال">فعال</option>
-                <option value="در انتظار">در انتظار</option>
-                <option value="غیرفعال">غیرفعال</option>
-              </select>
+              {inboundError ? <p className="text-xs text-rose-400">{inboundError}</p> : null}
+              {inboundOptions.length > 0 ? (
+                <div className="max-h-48 space-y-2 overflow-y-auto">
+                  {inboundOptions.map((item) => (
+                    <label
+                      key={item.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm"
+                      style={{ background: 'var(--bg-muted)' }}
+                    >
+                      <input
+                        type={isXui ? 'radio' : 'checkbox'}
+                        name="inbound"
+                        checked={selectedInboundIds.includes(item.id)}
+                        onChange={() => toggleInbound(item.id)}
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--text-muted)]">
+                  پس از وارد کردن اطلاعات اتصال، Inbounds را از پنل دریافت کنید.
+                </p>
+              )}
             </div>
           </div>
 

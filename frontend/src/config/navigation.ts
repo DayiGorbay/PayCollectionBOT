@@ -8,6 +8,8 @@ import {
   Layers,
   Ticket,
   Settings,
+  Bot,
+  Gift,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -38,7 +40,15 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     title: 'ابزارها',
-    items: [{ label: 'کدهای تخفیف', path: '/discounts', icon: Ticket }],
+    items: [
+      { label: 'کدهای تخفیف', path: '/discounts', icon: Ticket },
+      { label: 'پیکربندی ربات', path: '/bot-config', icon: Bot },
+      { label: 'اتصال رایگان', path: '/free-connect', icon: Gift },
+    ],
+  },
+  {
+    title: 'سیستم',
+    items: [{ label: 'تنظیمات', path: '/settings', icon: Settings }],
   },
 ];
 
@@ -50,6 +60,8 @@ export const ROUTE_META: Record<string, { title: string; subtitle?: string }> = 
   '/transactions': { title: 'تراکنش‌ها', subtitle: 'گزارش تمام تراکنش‌های مالی پنل' },
   '/panels': { title: 'پنل‌ها', subtitle: 'مدیریت API پنل‌ها و اتصال سرویس‌ها' },
   '/discounts': { title: 'کدهای تخفیف', subtitle: 'تعریف و مدیریت کدهای تخفیف' },
+  '/bot-config': { title: 'پیکربندی ربات', subtitle: 'شماره کارت، کانال و تنظیمات نصب ربات' },
+  '/free-connect': { title: 'پیکربندی اتصال رایگان', subtitle: 'کوین، حجم، پنل و مدت اتصال رایگان' },
   '/settings': { title: 'تنظیمات', subtitle: 'رنگ‌بندی، اطلاعات پنل و امنیت حساب' },
 };
 

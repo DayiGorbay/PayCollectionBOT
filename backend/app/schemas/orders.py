@@ -33,3 +33,11 @@ class OrderDetailOut(BaseModel):
     has_receipt: bool = Field(alias="hasReceipt")
     receipt_url: str | None = Field(alias="receiptUrl", default=None)
     admin_note: str | None = Field(alias="adminNote", default=None)
+    discount_code: str | None = Field(alias="discountCode", default=None)
+    wallet_paid_rial: int = Field(alias="walletPaidRial", default=0)
+
+
+class OrderApproveBody(BaseModel):
+    block_user: bool = Field(default=False, alias="blockUser")
+
+    model_config = {"populate_by_name": True}

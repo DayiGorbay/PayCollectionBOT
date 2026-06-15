@@ -37,6 +37,10 @@ class Order(Base):
     requested_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     amount: Mapped[str] = mapped_column(String(64), nullable=False)
     amount_rial: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    original_amount_rial: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    discount_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    discount_amount_rial: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    wallet_paid_rial: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     method: Mapped[str] = mapped_column(String(64), default="کارت به کارت")
     status: Mapped[str] = mapped_column(String(32), default="در انتظار", index=True)
     receipt_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -114,3 +118,25 @@ class DiscountCode(Base):
     used_label: Mapped[str] = mapped_column(String(32), nullable=False)
     valid_until: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
+    discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    discount_amount_rial: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    used_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class BotSetting(Base):
+    __tablename__ = "bot_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+
+class FreeConnectConfig(Base):
+    __tablename__ = "free_connect_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    coins_required: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    data_gb: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    panel_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("panels.id"), nullable=True)
+    duration_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)

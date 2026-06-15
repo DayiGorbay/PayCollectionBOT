@@ -39,6 +39,11 @@ async def create_purchase_order(
     amount_label: str,
     amount_rial: int,
     requested_username: str,
+    discount_code: str | None = None,
+    discount_amount_rial: int = 0,
+    original_amount_rial: int | None = None,
+    wallet_paid_rial: int = 0,
+    method: str = "کارت به کارت",
 ) -> Order:
     order = Order(
         telegram_user_id=telegram_id,
@@ -49,6 +54,11 @@ async def create_purchase_order(
         requested_username=requested_username,
         amount=amount_label,
         amount_rial=amount_rial,
+        original_amount_rial=original_amount_rial or amount_rial + discount_amount_rial,
+        discount_code=discount_code,
+        discount_amount_rial=discount_amount_rial,
+        wallet_paid_rial=wallet_paid_rial,
+        method=method,
         status="در انتظار",
     )
     session.add(order)

@@ -1,5 +1,5 @@
 from app.models.admin_user import AdminUser
-from app.models.catalog import DiscountCode, Order, Panel, Product, Transaction, UserService
+from app.models.catalog import DiscountCode, Order, Panel, Product, Transaction, UserService, BotSetting, FreeConnectConfig
 from app.models.telegram_user import TelegramUser
 
 __all__ = [
@@ -11,4 +11,6 @@ __all__ = [
     "Panel",
     "DiscountCode",
     "UserService",
+    "BotSetting",
+    "FreeConnectConfig",
 ]

@@ -28,6 +28,7 @@ class User(Base):
     referral_finalized = Column(Boolean, default=False)
     referral_finalized_at = Column(DateTime(timezone=True), nullable=True)
     is_suspicious = Column(Boolean, default=False)
+    is_blocked = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     inviter = relationship("User", remote_side=[id], backref="invitees")

@@ -89,8 +89,3 @@ async def on_help_callback(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.callback_query(main_cb.filter(F.action == "free_connect"))
-async def on_free_connect(callback: CallbackQuery) -> None:
-    await callback.answer("این بخش فعلاً در حال آماده‌سازی است.", show_alert=True)
-
-

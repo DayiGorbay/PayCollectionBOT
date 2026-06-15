@@ -8,42 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.catalog import DiscountCode, Order, Panel
 from app.models.telegram_user import TelegramUser
 from app.schemas.dashboard import ActiveCouponOut, DashboardSummaryOut, RecentOrderOut
-
-
-def _user_display_name(user: TelegramUser) -> str:
-    if user.username:
-        return user.username
-    parts = [user.first_name or "", user.last_name or ""]
-    name = " ".join(p for p in parts if p).strip()
-    return name or str(user.telegram_id)
-
-
-def _user_status(user: TelegramUser) -> str:
-    if user.is_suspicious:
-        return "در انتظار"
-    if not user.verified:
-        return "در انتظار"
-    if user.referral_finalized or user.coins > 0:
-        return "فعال"
-    return "فعال"
+from app.utils.jalali import format_jalali_datetime
 
 
 async def list_panel_users(session: AsyncSession) -> list[dict]:
-    result = await session.execute(select(TelegramUser).order_by(TelegramUser.id.desc()).limit(500))
-    users = result.scalars().all()
-    rows = []
-    for user in users:
-        rows.append(
-            {
-                "id": user.id,
-                "name": _user_display_name(user),
-                "plan": f"زیرمجموعه: {user.invited_count}",
-                "volume": f"{user.coins} کوین",
-                "expiry": user.created_at.strftime("%Y/%m/%d") if user.created_at else "-",
-                "status": _user_status(user),
-            }
-        )
-    return rows
+    from app.services.user_admin_service import list_panel_users as _list
+
+    return await _list(session)
 
 
 async def build_dashboard_summary(session: AsyncSession) -> DashboardSummaryOut:
@@ -89,7 +60,7 @@ async def build_dashboard_summary(session: AsyncSession) -> DashboardSummaryOut:
             product=o.product_name,
             amount=o.amount,
             status=o.status,
-            date=o.created_at.strftime("%Y/%m/%d") if o.created_at else "—",
+            date=format_jalali_datetime(o.created_at, with_time=False),
         )
         for o in orders_result.scalars().all()
     ]

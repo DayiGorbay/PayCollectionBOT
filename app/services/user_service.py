@@ -222,13 +222,16 @@ def build_profile_text(user: User) -> str:
     first_line = "👤 پروفایل کاربری\n\n"
     full_name = " ".join(filter(None, [user.first_name or "", user.last_name or ""])) or "بدون نام"
     username = f"@{user.username}" if user.username else "بدون نام کاربری"
+    from app.utils.files import format_rial
+    from app.utils.jalali import format_jalali_datetime
+
     return (
         f"{first_line}"
         f"📱 نام: {full_name}\n"
         f"🆔 نام کاربری: {username}\n"
         f"🔢 آیدی: {user.telegram_id}\n"
-        f"📅 ثبت نام: {user.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+        f"📅 ثبت نام: {format_jalali_datetime(user.created_at)}\n"
         f"🥇 کوین: {user.coins}\n"
         f"📊 زیر مجموعه: {user.invited_count}\n\n"
-        f"💰 موجودی: {user.balance} تومان"
+        f"💰 موجودی: {format_rial(user.balance or 0)}"
     )

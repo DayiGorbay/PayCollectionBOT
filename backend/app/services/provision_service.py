@@ -96,8 +96,9 @@ async def provision_purchase_order(session: AsyncSession, order: Order) -> UserS
     config_text = panel_user.links[0] if panel_user.links else subscription_url
     if not subscription_url and config_text:
         subscription_url = config_text
-    if not subscription_url:
-        raise ValueError("لینک سابسکریپشن از پنل دریافت نشد.")
+    if not subscription_url and not config_text:
+        subscription_url = f"user:{panel_user.username}"
+        config_text = subscription_url
 
     service = UserService(
         telegram_user_id=order.telegram_user_id,

@@ -14,6 +14,17 @@ class ProductCreate(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class ProductUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=255)
+    price: int | None = Field(default=None, gt=0)
+    duration_days: int | None = Field(default=None, gt=0, le=3650, alias="durationDays")
+    panel_id: int | None = Field(default=None, gt=0, alias="panelId")
+    category: str | None = Field(default=None, max_length=64)
+    is_active: bool | None = Field(default=None, alias="isActive")
+
+    model_config = {"populate_by_name": True}
+
+
 class ProductOut(BaseModel):
     id: int
     name: str

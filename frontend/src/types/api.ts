@@ -56,6 +56,8 @@ export type OrderDetail = {
   hasReceipt: boolean;
   receiptUrl?: string | null;
   adminNote?: string | null;
+  discountCode?: string | null;
+  walletPaidRial?: number;
 };
 
 export type PanelStats = {

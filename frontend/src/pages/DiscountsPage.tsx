@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchDiscounts } from '../services/api';
+import { createDiscount, deleteDiscount, fetchDiscounts, updateDiscount } from '../services/api';
+import { getApiErrorMessage } from '../services/apiClient';
 import { ROUTE_META } from '../config/navigation';
 import { DISCOUNT_FORM_FIELDS } from '../config/formFields';
 import PageHeader from '../components/PageHeader';
@@ -15,26 +16,55 @@ export default function DiscountsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const meta = ROUTE_META['/discounts'];
 
+  const load = () => {
+    setLoading(true);
+    fetchDiscounts()
+      .then((data) => setDiscounts(data))
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
-    fetchDiscounts().then((data) => {
-      setDiscounts(data);
-      setLoading(false);
-    });
+    load();
   }, []);
 
-  const handleCreate = (values: Record<string, string>) => {
-    const amountLabel = values.type === 'درصدی' ? `${values.amount}%` : `${values.amount} ت`;
-    const newDiscount = {
-      id: Date.now(),
-      code: values.code.toUpperCase(),
-      amount: amountLabel,
-      type: values.type,
-      used: `0/${values.maxUse || '∞'}`,
-      validUntil: values.validUntil,
-      status: 'فعال',
-    };
-    setDiscounts((prev) => [newDiscount, ...prev]);
-    addToast({ title: 'کد تخفیف', description: values.code, variant: 'success' });
+  const handleCreate = async (values: Record<string, string>) => {
+    try {
+      await createDiscount({
+        code: values.code.toUpperCase(),
+        amount: values.amount,
+        type: values.type,
+        maxUses: values.maxUse ? Number(values.maxUse) : 0,
+        validUntil: values.validUntil || '—',
+        status: 'فعال',
+      });
+      addToast({ title: 'کد تخفیف', description: values.code, variant: 'success' });
+      setModalOpen(false);
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
+  };
+
+  const handleToggleStatus = async (discount: any) => {
+    const next = discount.status === 'فعال' ? 'غیرفعال' : 'فعال';
+    try {
+      await updateDiscount(discount.id, { status: next });
+      addToast({ title: 'به‌روز شد', description: discount.code, variant: 'success' });
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
+  };
+
+  const handleDelete = async (discount: any) => {
+    if (!window.confirm(`کد «${discount.code}» حذف شود؟`)) return;
+    try {
+      await deleteDiscount(discount.id);
+      addToast({ title: 'حذف شد', description: discount.code, variant: 'info' });
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
   };
 
   return (
@@ -70,6 +100,24 @@ export default function DiscountsPage() {
                 header: 'وضعیت',
                 render: (d) => (
                   <StatusBadge label={d.status} variant={d.status === 'فعال' ? 'success' : 'danger'} />
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'عملیات',
+                render: (d) => (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="btn-ghost py-1 text-xs" onClick={() => handleToggleStatus(d)}>
+                      {d.status === 'فعال' ? 'غیرفعال' : 'فعال'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost py-1 text-xs text-rose-300"
+                      onClick={() => handleDelete(d)}
+                    >
+                      حذف
+                    </button>
+                  </div>
                 ),
               },
             ]}

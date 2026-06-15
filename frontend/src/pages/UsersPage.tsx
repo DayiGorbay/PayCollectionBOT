@@ -1,22 +1,42 @@
 import { useEffect, useState } from 'react';
-import { fetchUsers } from '../services/api';
+import { fetchUsers, blockUser } from '../services/api';
 import { ROUTE_META } from '../config/navigation';
 import PageHeader from '../components/PageHeader';
-import InfoCard from '../components/InfoCard';
 import StatusBadge from '../components/StatusBadge';
 import DataTable from '../components/DataTable';
+import { useAppContext } from '../context/AppContext';
+import { getApiErrorMessage } from '../services/apiClient';
 
 export default function UsersPage() {
+  const { addToast } = useAppContext();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const meta = ROUTE_META['/users'];
 
+  const load = () => {
+    setLoading(true);
+    fetchUsers()
+      .then((data) => setUsers(data))
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
-    fetchUsers().then((data) => {
-      setUsers(data);
-      setLoading(false);
-    });
+    load();
   }, []);
+
+  const toggleBlock = async (user: any) => {
+    try {
+      await blockUser(user.id, !user.isBlocked);
+      addToast({
+        title: user.isBlocked ? 'رفع مسدودیت' : 'مسدود شد',
+        description: user.name,
+        variant: 'success',
+      });
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
+  };
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -24,22 +44,6 @@ export default function UsersPage() {
         <h1 className="text-2xl font-bold sm:text-3xl">{meta.title}</h1>
         <PageHeader subtitle={meta.subtitle} count={loading ? undefined : users.length} />
       </div>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <InfoCard title="کل کاربران" value={users.length.toString()} caption="تمام کاربران ثبت شده" accent="accent" />
-        <InfoCard
-          title="کاربران فعال"
-          value={users.filter((item) => item.status === 'فعال').length.toString()}
-          caption="کاربران دارای پلن فعال"
-          accent="success"
-        />
-        <InfoCard
-          title="پلن‌های فعال"
-          value={new Set(users.map((item) => item.plan)).size.toString()}
-          caption="تنوع سرویس‌ها"
-          accent="neutral"
-        />
-      </section>
 
       <section className="table-shell">
         <div className="border-b px-4 py-4 sm:px-5" style={{ borderColor: 'var(--border)' }}>
@@ -54,17 +58,30 @@ export default function UsersPage() {
             columns={[
               { key: 'id', header: '#', render: (u) => u.id },
               { key: 'name', header: 'نام', render: (u) => <span className="font-medium">{u.name}</span> },
-              { key: 'plan', header: 'پلن', render: (u) => u.plan },
-              { key: 'volume', header: 'حجم', render: (u) => u.volume, hideOnMobile: true },
-              { key: 'expiry', header: 'انقضا', render: (u) => u.expiry },
+              { key: 'username', header: 'یوزرنیم', render: (u) => u.username },
+              { key: 'phone', header: 'موبایل', render: (u) => u.phone, hideOnMobile: true },
+              { key: 'history', header: 'تاریخچه خرید', render: (u) => u.purchaseHistory, hideOnMobile: true },
+              { key: 'total', header: 'جمع خرید', render: (u) => u.totalSpent },
+              { key: 'registered', header: 'ثبت‌نام', render: (u) => u.registeredAt },
               {
                 key: 'status',
                 header: 'وضعیت',
                 render: (u) => (
                   <StatusBadge
                     label={u.status}
-                    variant={u.status === 'فعال' ? 'success' : u.status === 'منقضی' ? 'danger' : 'warning'}
+                    variant={
+                      u.status === 'احراز شده' ? 'success' : u.status === 'مسدود' ? 'danger' : 'warning'
+                    }
                   />
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'عملیات',
+                render: (u) => (
+                  <button type="button" className="btn-ghost py-1 text-xs" onClick={() => toggleBlock(u)}>
+                    {u.isBlocked ? 'رفع مسدودیت' : 'مسدود کردن'}
+                  </button>
                 ),
               },
             ]}

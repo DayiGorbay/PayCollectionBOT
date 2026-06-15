@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Wifi } from 'lucide-react';
-import { createPanel, fetchPanels, fetchPanelsStats, testPanelById, testPanelConnection } from '../services/api';
+import { createPanel, deletePanel, fetchPanels, fetchPanelsStats, testPanelById, testPanelConnection } from '../services/api';
 import { getApiErrorMessage } from '../services/apiClient';
 import { ROUTE_META } from '../config/navigation';
 import StatusBadge from '../components/StatusBadge';
@@ -108,6 +108,17 @@ export default function PanelsPage() {
     }
   };
 
+  const handleDelete = async (panelId: number, panelName: string) => {
+    if (!window.confirm(`پنل «${panelName}» حذف شود؟`)) return;
+    try {
+      await deletePanel(panelId);
+      addToast({ title: 'حذف شد', description: panelName, variant: 'info' });
+      load();
+    } catch (error) {
+      addToast({ title: 'خطا', description: getApiErrorMessage(error), variant: 'error' });
+    }
+  };
+
   return (
     <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -168,6 +179,13 @@ export default function PanelsPage() {
                 >
                   <Wifi className="h-4 w-4" />
                   {testingId === panel.id ? 'در حال تست...' : 'تست اتصال'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost mt-2 inline-flex w-full items-center justify-center gap-2 text-rose-300"
+                  onClick={() => handleDelete(panel.id, panel.name)}
+                >
+                  حذف پنل
                 </button>
               </div>
             ))}
