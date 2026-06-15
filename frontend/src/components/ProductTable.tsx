@@ -1,15 +1,5 @@
 import DataTable from './DataTable';
-
-type Product = {
-  id: number;
-  name: string;
-  price: string;
-  duration?: string;
-  durationDays?: number;
-  panel: string;
-  code: string;
-  category?: string;
-};
+import type { Product } from '../types/api';
 
 type Props = {
   products: Product[];
@@ -34,7 +24,7 @@ export default function ProductTable({ products, loading, onEdit, onDelete }: Pr
           header: 'مدت',
           render: (p) => p.duration ?? (p.durationDays ? `${p.durationDays} روز` : '—'),
         },
-        { key: 'panel', header: 'پنل', render: (p) => p.panel },
+        { key: 'panel', header: 'پنل', render: (p) => p.panel ?? '—' },
         { key: 'code', header: 'کد', render: (p) => <span className="font-mono text-xs">{p.code}</span> },
         { key: 'category', header: 'دسته', render: (p) => p.category ?? '—', hideOnMobile: true },
         {

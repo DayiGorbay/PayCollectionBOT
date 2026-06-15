@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 import type { DashboardSummary } from '../types/api';
-import type { OrderDetail, PanelCreatePayload, ProductCreatePayload } from '../types/api';
+import type { OrderDetail, PanelCreatePayload, Product, ProductCreatePayload } from '../types/api';
 
 export type { OrderDetail } from '../types/api';
 
@@ -19,8 +19,8 @@ export async function fetchOrders() {
   return data;
 }
 
-export async function fetchProducts() {
-  const { data } = await apiClient.get('/products');
+export async function fetchProducts(): Promise<Product[]> {
+  const { data } = await apiClient.get<Product[]>('/products');
   return data;
 }
 
@@ -53,8 +53,8 @@ export async function deleteDiscount(id: number) {
   await apiClient.delete(`/discounts/${id}`);
 }
 
-export async function updateProduct(id: number, payload: Record<string, unknown>) {
-  const { data } = await apiClient.patch(`/products/${id}`, payload);
+export async function updateProduct(id: number, payload: ProductCreatePayload): Promise<Product> {
+  const { data } = await apiClient.patch<Product>(`/products/${id}`, payload);
   return data;
 }
 

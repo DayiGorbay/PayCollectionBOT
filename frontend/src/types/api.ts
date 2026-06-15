@@ -96,6 +96,19 @@ export type PanelCreatePayload = {
   inboundId?: number;
 };
 
+export type Product = {
+  id: number;
+  name: string;
+  price: string;
+  durationDays: number;
+  duration: string;
+  panel?: string;
+  panelId?: number | null;
+  code: string;
+  category?: string | null;
+  isActive?: boolean;
+};
+
 export type ProductCreatePayload = {
   name: string;
   price: number;

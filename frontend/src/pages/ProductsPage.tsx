@@ -6,16 +6,14 @@ import { ROUTE_META } from '../config/navigation';
 import ProductTable from '../components/ProductTable';
 import ProductFormModal from '../components/ProductFormModal';
 import { useAppContext } from '../context/AppContext';
-import type { ProductCreatePayload } from '../types/api';
-
-type ProductRow = ProductCreatePayload & { id: number; price?: string; panel?: string; duration?: string };
+import type { Product, ProductCreatePayload } from '../types/api';
 
 export default function ProductsPage() {
   const { addToast } = useAppContext();
-  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<ProductRow | null>(null);
+  const [editing, setEditing] = useState<Product | null>(null);
   const meta = ROUTE_META['/products'];
 
   const load = () => {
@@ -52,7 +50,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDelete = async (product: ProductRow) => {
+  const handleDelete = async (product: Product) => {
     if (!window.confirm(`محصول «${product.name}» حذف شود؟`)) return;
     try {
       await deleteProduct(product.id);

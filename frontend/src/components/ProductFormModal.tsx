@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { fetchPanels } from '../services/api';
-import type { ProductCreatePayload } from '../types/api';
+import type { Product, ProductCreatePayload } from '../types/api';
 
 type PanelOption = { id: number; name: string };
 
@@ -9,7 +9,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSubmit: (payload: ProductCreatePayload) => void | Promise<void>;
-  initial?: Partial<ProductCreatePayload> & { id?: number; price?: string | number; durationDays?: number };
+  initial?: Product;
   title?: string;
   submitLabel?: string;
 };
