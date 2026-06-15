@@ -6,3 +6,4 @@ qrcode[pil]==8.0
 httpx==0.28.1
 aiohttp==3.9.5
 jdatetime==5.0.0
+aiohttp-socks==0.8.4
