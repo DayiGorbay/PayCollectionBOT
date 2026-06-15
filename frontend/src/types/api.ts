@@ -117,3 +117,37 @@ export type ProductCreatePayload = {
   code: string;
   category?: string;
 };
+
+export type ServiceListItem = {
+  id: number;
+  user: string;
+  telegramUserId: number;
+  product?: string | null;
+  panel?: string | null;
+  marzbanUsername: string;
+  status: string;
+  expireAt?: string | null;
+  remainingTrafficBytes?: number | null;
+  usedTrafficBytes?: number;
+  dataLimitBytes?: number | null;
+  onlineStatus?: string | null;
+  lastOnlineAt?: string | null;
+  createdAt: string;
+  lastSyncedAt?: string | null;
+};
+
+export type ServiceDetail = ServiceListItem & {
+  orderId?: number | null;
+  productId?: number | null;
+  panelId?: number | null;
+  panelType: string;
+  subscriptionUrl?: string | null;
+  configText?: string | null;
+  dataGb: number;
+  daysRemaining?: number | null;
+  panelUserStatus?: string | null;
+  inbounds?: Record<string, unknown> | unknown[] | null;
+  links: string[];
+  liveFromPanel: boolean;
+  panelRaw?: Record<string, unknown> | null;
+};

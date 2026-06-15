@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -11,7 +12,10 @@ from app.providers.factory import create_provider
 from app.providers.models import PanelUserCreate
 from app.repositories.panel_repository import PanelRepository
 from app.services.provision_service import _data_limit_bytes, allocate_panel_username, sanitize_username
+from app.services.service_admin_service import create_panel_user_idempotent, persist_service_from_panel_user
 from app.services.telegram_notify import send_service_activation_message
+
+logger = logging.getLogger(__name__)
 
 
 async def get_config(session: AsyncSession) -> FreeConnectConfig:
@@ -80,39 +84,28 @@ async def provision_free_connect(
     now = datetime.now(timezone.utc)
     expire_at = now + timedelta(days=config.duration_days)
 
-    panel_user = await provider.create_user(
+    panel_user = await create_panel_user_idempotent(
+        provider,
         PanelUserCreate(
             username=panel_username,
             data_limit_bytes=data_limit,
             expire_at=expire_at,
             note=f"free_connect:{telegram_user_id}",
-        )
+        ),
     )
-
-    subscription_url = panel_user.subscription_url
-    config_text = panel_user.links[0] if panel_user.links else subscription_url
-    if not subscription_url and config_text:
-        subscription_url = config_text
-    if not subscription_url and not config_text:
-        subscription_url = f"user:{panel_user.username}"
-        config_text = subscription_url
 
     user.coins = (user.coins or 0) - config.coins_required
 
-    service = UserService(
+    service = await persist_service_from_panel_user(
+        session,
         telegram_user_id=telegram_user_id,
-        order_id=None,
-        product_id=None,
-        panel_id=panel.id,
-        panel_type=panel.panel_type,
-        panel_username=panel_user.username,
-        subscription_url=subscription_url,
-        config_text=config_text,
+        order=None,
+        product=None,
+        panel=panel,
+        panel_user=panel_user,
         data_gb=config.data_gb,
         expire_at=expire_at,
-        status="active",
     )
-    session.add(service)
     await session.flush()
 
     try:
@@ -124,6 +117,6 @@ async def provision_free_connect(
             config_text=service.config_text,
         )
     except Exception:
-        pass
+        logger.exception("free_connect_notify_failed telegram_user_id=%s", telegram_user_id)
 
     return service

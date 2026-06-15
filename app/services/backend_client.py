@@ -26,6 +26,15 @@ def _raise_on_error(response: httpx.Response) -> None:
     raise RuntimeError(str(detail))
 
 
+async def _get(path: str, *, params: dict | None = None) -> httpx.Response:
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        return await client.get(
+            _api_url(path),
+            headers=_internal_headers(),
+            params=params,
+        )
+
+
 async def _post(
     path: str,
     *,
@@ -61,3 +70,19 @@ async def delete_user_service_via_api(service_id: int, telegram_user_id: int) ->
         params={"telegramUserId": telegram_user_id},
     )
     _raise_on_error(response)
+
+
+async def list_user_services_via_api(telegram_user_id: int) -> list[dict]:
+    response = await _get(f"/internal/users/{telegram_user_id}/services")
+    _raise_on_error(response)
+    data = response.json()
+    return data if isinstance(data, list) else []
+
+
+async def get_user_service_via_api(service_id: int, telegram_user_id: int) -> dict:
+    response = await _get(
+        f"/internal/services/{service_id}",
+        params={"telegramUserId": telegram_user_id},
+    )
+    _raise_on_error(response)
+    return response.json()

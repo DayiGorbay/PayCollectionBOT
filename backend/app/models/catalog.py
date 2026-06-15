@@ -46,16 +46,18 @@ class Order(Base):
     receipt_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     receipt_file_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    service_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("user_services.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class UserService(Base):
-    """سرویس فعال کاربر روی پنل (پس از تأیید سفارش)."""
+    """سرویس فعال کاربر — Source of Truth در PostgreSQL؛ پنل فقط Provider است."""
 
     __tablename__ = "user_services"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     order_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("orders.id"), nullable=True)
     product_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("products.id"), nullable=True)
@@ -65,9 +67,18 @@ class UserService(Base):
     subscription_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     config_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     data_gb: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    data_limit_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    used_traffic_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    remaining_traffic_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     expire_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    panel_user_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    online_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    last_online_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    inbounds_cache: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="active", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Transaction(Base):

@@ -10,6 +10,7 @@ import {
   Settings,
   Bot,
   Gift,
+  Server,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -36,6 +37,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'محصولات', path: '/products', icon: Package },
       { label: 'تراکنش‌ها', path: '/transactions', icon: CreditCard },
       { label: 'پنل‌ها', path: '/panels', icon: Layers },
+      { label: 'سرویس‌ها', path: '/services', icon: Server },
     ],
   },
   {
@@ -55,6 +57,7 @@ export const ROUTE_META: Record<string, { title: string; subtitle?: string }> = 
   '/products': { title: 'محصولات', subtitle: 'فهرست محصولات قابل فروش و مدیریت آن‌ها' },
   '/transactions': { title: 'تراکنش‌ها', subtitle: 'گزارش تمام تراکنش‌های مالی پنل' },
   '/panels': { title: 'پنل‌ها', subtitle: 'مدیریت API پنل‌ها و اتصال سرویس‌ها' },
+  '/services': { title: 'سرویس‌ها', subtitle: 'فهرست سرویس‌های فعال کاربران و وضعیت لحظه‌ای پنل' },
   '/discounts': { title: 'کدهای تخفیف', subtitle: 'تعریف و مدیریت کدهای تخفیف' },
   '/bot-config': { title: 'پیکربندی ربات', subtitle: 'شماره کارت، کانال و تنظیمات نصب ربات' },
   '/free-connect': { title: 'پیکربندی اتصال رایگان', subtitle: 'کوین، حجم، پنل و مدت اتصال رایگان' },

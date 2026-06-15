@@ -200,6 +200,9 @@ class MarzbanProvider(PanelProvider):
             note=data.note,
         )
         response = await self._auth_request("POST", "/api/user", json=payload.model_dump(exclude_none=True))
+        if response.status_code == 409:
+            logger.info("marzban_create_conflict username=%s — fetching existing", data.username)
+            return await self.get_user(data.username)
         self.http.raise_for_status(response, context="Marzban create_user")
         return self._to_panel_user(response.json())
 

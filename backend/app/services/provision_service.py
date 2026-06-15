@@ -12,6 +12,11 @@ from app.models.catalog import Order, Product, UserService
 from app.providers.factory import create_provider
 from app.providers.models import PanelUserCreate
 from app.repositories.panel_repository import PanelRepository
+from app.services.service_admin_service import (
+    create_panel_user_idempotent,
+    get_service_by_order_id,
+    persist_service_from_panel_user,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +51,10 @@ async def allocate_panel_username(provider, base_username: str) -> str:
 
 async def provision_purchase_order(session: AsyncSession, order: Order) -> UserService:
     """
-    جریان: Product → panel_id → Panel → Provider → create_user → links
+    PostgreSQL = Source of Truth.
+    1) Idempotent: اگر سرویس برای این سفارش وجود دارد، همان برگردانده می‌شود.
+    2) ساخت/بازیابی کاربر در پنل (Marzban/XUI)
+    3) ذخیره Service در DB قبل از هر اعلان
     """
     if order.order_type != "purchase":
         raise ValueError("فقط سفارش خرید سرویس قابل ساخت است.")
@@ -54,6 +62,12 @@ async def provision_purchase_order(session: AsyncSession, order: Order) -> UserS
         raise ValueError("محصول سفارش مشخص نیست.")
     if not order.requested_username:
         raise ValueError("نام کاربری سفارش ثبت نشده است.")
+
+    existing = await get_service_by_order_id(session, order.id)
+    if existing is not None and existing.status != "deleted":
+        logger.info("provision_idempotent order_id=%s service_id=%s", order.id, existing.id)
+        order.service_id = existing.id
+        return existing
 
     product = await session.get(Product, order.product_id)
     if product is None:
@@ -67,7 +81,7 @@ async def provision_purchase_order(session: AsyncSession, order: Order) -> UserS
         raise ValueError("پنل محصول یافت نشد.")
 
     provider = create_provider(panel, session)
-    panel_username = await allocate_panel_username(provider, order.requested_username)
+    panel_username = sanitize_username(f"{order.requested_username}_{order.id}")[:32] or f"order{order.id}"
 
     data_gb = parse_data_gb(product.size)
     data_limit = _data_limit_bytes(data_gb)
@@ -75,13 +89,14 @@ async def provision_purchase_order(session: AsyncSession, order: Order) -> UserS
     expire_at = now + timedelta(days=product.duration_days)
 
     try:
-        panel_user = await provider.create_user(
+        panel_user = await create_panel_user_idempotent(
+            provider,
             PanelUserCreate(
                 username=panel_username,
                 data_limit_bytes=data_limit,
                 expire_at=expire_at,
                 note=f"order:{order.id}",
-            )
+            ),
         )
     except PanelError as exc:
         logger.exception(
@@ -92,27 +107,20 @@ async def provision_purchase_order(session: AsyncSession, order: Order) -> UserS
         )
         raise ValueError(str(exc)) from exc
 
-    subscription_url = panel_user.subscription_url
-    config_text = panel_user.links[0] if panel_user.links else subscription_url
-    if not subscription_url and config_text:
-        subscription_url = config_text
-    if not subscription_url and not config_text:
-        subscription_url = f"user:{panel_user.username}"
-        config_text = subscription_url
-
-    service = UserService(
+    service = await persist_service_from_panel_user(
+        session,
         telegram_user_id=order.telegram_user_id,
-        order_id=order.id,
-        product_id=product.id,
-        panel_id=panel.id,
-        panel_type=panel.panel_type,
-        panel_username=panel_user.username,
-        subscription_url=subscription_url,
-        config_text=config_text,
+        order=order,
+        product=product,
+        panel=panel,
+        panel_user=panel_user,
         data_gb=data_gb,
         expire_at=expire_at,
-        status="active",
     )
-    session.add(service)
-    await session.flush()
+    logger.info(
+        "provision_saved order_id=%s service_id=%s username=%s",
+        order.id,
+        service.id,
+        service.panel_username,
+    )
     return service

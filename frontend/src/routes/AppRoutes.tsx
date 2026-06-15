@@ -12,6 +12,8 @@ import PanelsPage from '../pages/PanelsPage';
 import DiscountsPage from '../pages/DiscountsPage';
 import BotConfigPage from '../pages/BotConfigPage';
 import FreeConnectPage from '../pages/FreeConnectPage';
+import ServicesPage from '../pages/ServicesPage';
+import ServiceDetailPage from '../pages/ServiceDetailPage';
 import SettingsPage from '../pages/SettingsPage';
 
 function AppRoutes() {
@@ -30,6 +32,8 @@ function AppRoutes() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="panels" element={<PanelsPage />} />
+          <Route path="services" element={<ServicesPage />} />
+          <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="discounts" element={<DiscountsPage />} />
           <Route path="bot-config" element={<BotConfigPage />} />
           <Route path="free-connect" element={<FreeConnectPage />} />

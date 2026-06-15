@@ -1,18 +1,21 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.models.user_service import UserService
 from app.utils.security import main_cb, service_cb
 
 
-def services_list_keyboard(services: list[UserService]) -> InlineKeyboardMarkup:
+def services_list_keyboard(services: list[dict]) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     for svc in services:
-        label = f"{svc.panel_username} — {svc.data_gb}GB"
+        username = svc.get("marzbanUsername") or svc.get("panel_username") or "service"
+        data_gb = svc.get("dataGb") or svc.get("data_gb")
+        label = username
+        if data_gb:
+            label = f"{username} — {data_gb}GB"
         rows.append(
             [
                 InlineKeyboardButton(
                     text=label,
-                    callback_data=service_cb(action="view", service_id=str(svc.id)).pack(),
+                    callback_data=service_cb(action="view", service_id=str(svc["id"])).pack(),
                 )
             ]
         )

@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 import type { DashboardSummary } from '../types/api';
-import type { OrderDetail, PanelCreatePayload, Product, ProductCreatePayload } from '../types/api';
+import type { OrderDetail, PanelCreatePayload, Product, ProductCreatePayload, ServiceDetail, ServiceListItem } from '../types/api';
 
 export type { OrderDetail } from '../types/api';
 
@@ -174,6 +174,26 @@ export async function createProduct(payload: ProductCreatePayload) {
     code: payload.code,
     category: payload.category,
   });
+  return data;
+}
+
+export async function fetchServices(): Promise<ServiceListItem[]> {
+  const { data } = await apiClient.get<ServiceListItem[]>('/services');
+  return data;
+}
+
+export async function fetchService(id: number): Promise<ServiceDetail> {
+  const { data } = await apiClient.get<ServiceDetail>(`/services/${id}`);
+  return data;
+}
+
+export async function syncService(id: number) {
+  const { data } = await apiClient.post(`/services/${id}/sync`);
+  return data;
+}
+
+export async function refreshService(id: number): Promise<ServiceDetail> {
+  const { data } = await apiClient.post<ServiceDetail>(`/services/${id}/refresh`);
   return data;
 }
 

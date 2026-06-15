@@ -70,7 +70,13 @@ def main() -> int:
 
     from app.services import backend_client
 
-    for fn_name in ("free_connect_via_api", "approve_order_via_api", "delete_user_service_via_api"):
+    for fn_name in (
+        "free_connect_via_api",
+        "approve_order_via_api",
+        "delete_user_service_via_api",
+        "list_user_services_via_api",
+        "get_user_service_via_api",
+    ):
         if not callable(getattr(backend_client, fn_name, None)):
             errors.append(f"app.services.backend_client missing callable: {fn_name}")
 

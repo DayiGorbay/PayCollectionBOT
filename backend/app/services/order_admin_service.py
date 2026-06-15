@@ -96,6 +96,8 @@ async def approve_order(session: AsyncSession, order: Order) -> Order:
         raise ValueError("رسید پرداخت یا پرداخت کیف پول ثبت نشده است.")
 
     service = None
+    now = datetime.now(timezone.utc)
+
     if order.order_type == "topup":
         result = await session.execute(
             select(TelegramUser).where(TelegramUser.telegram_id == order.telegram_user_id)
@@ -115,12 +117,18 @@ async def approve_order(session: AsyncSession, order: Order) -> Order:
     else:
         raise ValueError("نوع سفارش نامعتبر است.")
 
-    now = datetime.now(timezone.utc)
     order.status = "موفق"
     order.processed_at = now
+    if service is not None:
+        order.service_id = service.id
     await record_transaction(session, order)
     await session.flush()
 
+    await _notify_order_completion(order, service)
+    return order
+
+
+async def _notify_order_completion(order: Order, service) -> None:
     try:
         if order.order_type == "topup":
             await send_telegram_text(
@@ -137,9 +145,7 @@ async def approve_order(session: AsyncSession, order: Order) -> Order:
                 config_text=service.config_text,
             )
     except Exception:
-        logger.exception("order_notify_failed order_id=%s", order.id)
-
-    return order
+        logger.exception("order_notify_failed order_id=%s service_id=%s", order.id, getattr(service, "id", None))
 
 
 async def reject_order(session: AsyncSession, order: Order, *, note: str | None = None) -> None:
